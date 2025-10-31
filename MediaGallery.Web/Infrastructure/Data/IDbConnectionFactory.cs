@@ -1,6 +1,6 @@
 using System.Data;
 
-namespace MediaGallery.Web.Services;
+namespace MediaGallery.Web.Infrastructure.Data;
 
 public interface IDbConnectionFactory
 {
