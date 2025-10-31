@@ -4,9 +4,12 @@ namespace MediaGallery.Web.Infrastructure.Data;
 
 public interface IMessageRepository
 {
-    Task<IReadOnlyList<MessageDto>> GetMessagesAsync(
-        long channelId,
+    Task<IReadOnlyList<MessageDetailDto>> GetRecentMessagesAsync(
         int offset,
-        int pageSize,
+        int limit,
+        long? channelId,
+        long? userId,
+        bool sortAscending,
+        bool mediaOnly,
         CancellationToken cancellationToken = default);
 }

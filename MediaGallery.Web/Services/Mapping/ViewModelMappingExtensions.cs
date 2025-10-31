@@ -10,8 +10,7 @@ namespace MediaGallery.Web.Services.Mapping;
 public static class ViewModelMappingExtensions
 {
     public static RecentMessagesViewModel ToRecentMessagesViewModel(
-        this IEnumerable<MessageDto> messages,
-        IReadOnlyDictionary<long, UserDto>? users,
+        this IEnumerable<MessageDetailDto> messages,
         PaginationMetadata pagination)
     {
         if (messages is null)
@@ -25,11 +24,7 @@ public static class ViewModelMappingExtensions
         }
 
         var messageList = messages
-            .Select(message =>
-            {
-                users?.TryGetValue(message.UserId, out var userDto);
-                return message.ToRecentMessage(userDto);
-            })
+            .Select(message => message.ToRecentMessage())
             .ToList();
 
         return new RecentMessagesViewModel(messageList, pagination);
@@ -38,11 +33,17 @@ public static class ViewModelMappingExtensions
     public static UserProfileViewModel ToUserProfileViewModel(
         this UserDto user,
         IEnumerable<UserTagDto>? tags,
+        IEnumerable<MessageDetailDto> messages,
         PaginationMetadata pagination)
     {
         if (user is null)
         {
             throw new ArgumentNullException(nameof(user));
+        }
+
+        if (messages is null)
+        {
+            throw new ArgumentNullException(nameof(messages));
         }
 
         if (pagination is null)
@@ -51,11 +52,12 @@ public static class ViewModelMappingExtensions
         }
 
         var profile = user.ToUserProfile(tags);
-        return new UserProfileViewModel(profile, pagination);
+        var messageList = messages.Select(message => message.ToRecentMessage()).ToList();
+        return new UserProfileViewModel(profile, messageList, pagination);
     }
 
     public static TagIndexViewModel ToTagIndexViewModel(
-        this IEnumerable<PhotoTagDto> tags,
+        this IEnumerable<TagSummaryDto> tags,
         UserDto? user,
         PaginationMetadata pagination)
     {
@@ -74,13 +76,13 @@ public static class ViewModelMappingExtensions
     }
 
     public static TagDetailViewModel ToTagDetailViewModel(
-        this IEnumerable<(PhotoDto Photo, IEnumerable<PhotoTagDto> Tags, UserDto? User)> photos,
+        this IEnumerable<TagDetailDto> details,
         string tag,
         PaginationMetadata pagination)
     {
-        if (photos is null)
+        if (details is null)
         {
-            throw new ArgumentNullException(nameof(photos));
+            throw new ArgumentNullException(nameof(details));
         }
 
         if (pagination is null)
@@ -88,12 +90,8 @@ public static class ViewModelMappingExtensions
             throw new ArgumentNullException(nameof(pagination));
         }
 
-        var taggedPhotos = photos
-            .Select(entry =>
-            {
-                var tagSet = entry.Tags ?? Enumerable.Empty<PhotoTagDto>();
-                return entry.Photo.ToTaggedPhoto(tagSet, entry.User);
-            })
+        var taggedPhotos = details
+            .Select(detail => detail.ToTaggedPhoto())
             .ToList();
 
         return new TagDetailViewModel(tag, taggedPhotos, pagination);

@@ -10,6 +10,10 @@ public sealed class TaggedPhoto
         string filePath,
         DateTime addedOn,
         IReadOnlyList<PhotoTag> tags,
+        long? channelId,
+        long? messageId,
+        DateTime? sentDate,
+        string? messageText,
         long? userId,
         string? username,
         string? firstName,
@@ -24,6 +28,10 @@ public sealed class TaggedPhoto
         FilePath = filePath;
         AddedOn = addedOn;
         Tags = tags ?? throw new ArgumentNullException(nameof(tags));
+        ChannelId = channelId;
+        MessageId = messageId;
+        SentDate = sentDate;
+        MessageText = messageText;
         UserId = userId;
         Username = username;
         FirstName = firstName;
@@ -37,6 +45,14 @@ public sealed class TaggedPhoto
     public DateTime AddedOn { get; }
 
     public IReadOnlyList<PhotoTag> Tags { get; }
+
+    public long? ChannelId { get; }
+
+    public long? MessageId { get; }
+
+    public DateTime? SentDate { get; }
+
+    public string? MessageText { get; }
 
     public long? UserId { get; }
 

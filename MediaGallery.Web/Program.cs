@@ -15,7 +15,10 @@ builder.Services.AddScoped<IMessageRepository, MessageRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IPhotoRepository, PhotoRepository>();
 builder.Services.AddScoped<ITagRepository, TagRepository>();
-builder.Services.AddSingleton<IMediaFileProvider, MediaFileProvider>();
+builder.Services.AddScoped<IMediaFileProvider, MediaFileProvider>();
+builder.Services.AddScoped<IMessageService, MessageService>();
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<ITagService, TagService>();
 
 var app = builder.Build();
 

@@ -8,4 +8,8 @@ public interface IUserRepository
         int offset,
         int pageSize,
         CancellationToken cancellationToken = default);
+
+    Task<UserDto?> GetUserByIdAsync(
+        long userId,
+        CancellationToken cancellationToken = default);
 }
