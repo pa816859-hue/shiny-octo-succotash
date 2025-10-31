@@ -1,0 +1,42 @@
+@using System.Text.Json
+@{
+    ViewData["Title"] = "Recent Messages";
+    var sampleMessages = new[]
+    {
+        new { messageId = 101, user = "Demo User", text = "Panoramic skyline from the latest drop.", mediaType = "photo", filePath = "photos/sample1.jpg", width = 1600, height = 900, isAccessible = true },
+        new { messageId = 102, user = "Another User", text = "Short teaser clip", mediaType = "video", filePath = "videos/teaser.mp4", width = 1920, height = 1080, isAccessible = true },
+        new { messageId = 103, user = "Restricted User", text = "This item should be hidden", mediaType = "photo", filePath = "photos/private.jpg", width = 1024, height = 768, isAccessible = false }
+    };
+}
+
+<section class="page-header">
+    <h1>@ViewData["Title"]</h1>
+    <p class="lead">Scroll to browse new uploads. Launch the slideshow to lean back and enjoy.</p>
+</section>
+
+<section class="recent-messages" data-feed-endpoint="/api/messages/recent" data-media-root="@Url.Content("~/media/")">
+    <div class="toolbar" role="toolbar" aria-label="Recent message controls">
+        <div class="button-group">
+            <button class="btn" data-action="toggle-layout" type="button">Toggle layout</button>
+            <button class="btn" data-action="start-slideshow" type="button">Start slideshow</button>
+        </div>
+        <div class="button-group">
+            <label class="switch" for="recent-only-media">
+                <input id="recent-only-media" type="checkbox" data-filter="onlyMedia" />
+                <span>Only show items with media</span>
+            </label>
+        </div>
+    </div>
+
+    <div class="media-gallery-grid" data-gallery data-scroll-target tabindex="0" aria-live="polite"></div>
+    <div class="scroll-status" data-scroll-status aria-live="polite"></div>
+    <div class="scroll-sentinel" data-scroll-sentinel></div>
+</section>
+
+<script type="application/json" id="recent-messages-data">
+    @Html.Raw(JsonSerializer.Serialize(sampleMessages))
+</script>
+
+@section Scripts {
+    <script type="module" src="~/js/recentMessages.js" asp-append-version="true"></script>
+}

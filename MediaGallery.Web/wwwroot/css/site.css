@@ -2,6 +2,8 @@ body {
     font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
     margin: 0;
     padding: 0;
+    background-color: #f9fafb;
+    color: #1f2933;
 }
 
 .navbar {
@@ -10,17 +12,30 @@ body {
     padding: 1rem 0;
 }
 
+.navbar .nav,
+.navbar .navbar-brand,
+.navbar .nav-link {
+    display: inline-flex;
+    align-items: center;
+}
+
 .navbar .nav-link,
 .navbar .navbar-brand {
     color: #fff;
     margin-right: 1rem;
     text-decoration: none;
+    font-weight: 600;
+}
+
+.navbar .nav-link:hover,
+.navbar .nav-link:focus {
+    text-decoration: underline;
 }
 
 .container {
     margin: 0 auto;
-    max-width: 960px;
-    padding: 0 1rem;
+    max-width: 1200px;
+    padding: 0 1.5rem;
 }
 
 .footer {
@@ -28,4 +43,296 @@ body {
     padding: 1rem 0;
     margin-top: 2rem;
     text-align: center;
+    color: #52606d;
+}
+
+.page-header {
+    margin: 2rem 0 1.5rem;
+}
+
+.page-header h1 {
+    margin-bottom: 0.5rem;
+    font-size: 2rem;
+}
+
+.lead {
+    margin: 0;
+    color: #52606d;
+}
+
+.toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.button-group {
+    display: inline-flex;
+    gap: 0.5rem;
+}
+
+.btn {
+    background-color: #2563eb;
+    color: #fff;
+    border: none;
+    border-radius: 0.375rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.btn:hover,
+.btn:focus {
+    background-color: #1d4ed8;
+}
+
+.btn.is-active {
+    background-color: #1d4ed8;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25);
+}
+
+.btn-link {
+    background: none;
+    color: #2563eb;
+    border: none;
+    padding: 0;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.btn-link:hover,
+.btn-link:focus {
+    text-decoration: underline;
+}
+
+.switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.switch input {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+.chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    padding: 0;
+    list-style: none;
+}
+
+.chip {
+    background-color: #e4e7eb;
+    border: none;
+    border-radius: 999px;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.chip.is-active,
+.chip:hover,
+.chip:focus {
+    background-color: #1d4ed8;
+    color: #fff;
+}
+
+.media-gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1rem;
+}
+
+.media-card {
+    background-color: #fff;
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 20px -15px rgba(15, 23, 42, 0.35);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 100%;
+}
+
+.media-card__header {
+    padding: 0.75rem 1rem 0;
+    font-size: 1rem;
+}
+
+.media-card__figure {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0 0 1rem;
+}
+
+.media-card__figure img,
+.media-card__video {
+    width: 100%;
+    height: auto;
+    border-radius: 0.5rem;
+    object-fit: cover;
+}
+
+.video-wrapper {
+    position: relative;
+    padding-top: 56.25%;
+    width: 100%;
+}
+
+.video-wrapper video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 0.5rem;
+    object-fit: cover;
+}
+
+.media-card__caption {
+    padding: 0 1rem;
+    font-size: 0.85rem;
+    color: #52606d;
+}
+
+.media-card__caption .meta {
+    display: inline-block;
+}
+
+.media-card:focus-visible,
+.btn:focus-visible,
+.chip:focus-visible,
+.btn-link:focus-visible {
+    outline: 3px solid rgba(37, 99, 235, 0.45);
+    outline-offset: 2px;
+}
+
+.scroll-status {
+    margin-top: 0.75rem;
+    color: #52606d;
+    font-size: 0.9rem;
+}
+
+.recent-messages.is-list-view .media-gallery-grid {
+    grid-template-columns: 1fr;
+}
+
+.recent-messages.is-list-view .media-card {
+    flex-direction: row;
+    align-items: center;
+}
+
+.recent-messages.is-list-view .media-card__figure {
+    flex-direction: row;
+    align-items: center;
+    gap: 1rem;
+}
+
+.recent-messages.is-list-view .media-card__figure img,
+.recent-messages.is-list-view .media-card__video {
+    max-width: 320px;
+}
+
+.user-profile {
+    display: grid;
+    grid-template-columns: minmax(0, 280px) minmax(0, 1fr);
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.user-profile__sidebar {
+    background: #fff;
+    padding: 1.5rem;
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 25px -20px rgba(15, 23, 42, 0.5);
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.user-profile__gallery {
+    min-height: 320px;
+}
+
+.tag-browser {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 320px);
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.tag-browser__list {
+    display: grid;
+    gap: 1rem;
+}
+
+.tag-card {
+    background: #fff;
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    box-shadow: 0 15px 35px -25px rgba(15, 23, 42, 0.55);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.tag-card.is-active {
+    border: 2px solid #2563eb;
+}
+
+.tag-browser__preview {
+    background: #fff;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    box-shadow: 0 12px 32px -24px rgba(15, 23, 42, 0.55);
+}
+
+.tag-browser__preview-title {
+    margin-top: 0;
+    margin-bottom: 1rem;
+}
+
+.tag-detail__meta {
+    margin-bottom: 1.5rem;
+}
+
+@media (max-width: 1024px) {
+    .user-profile {
+        grid-template-columns: 1fr;
+    }
+
+    .tag-browser {
+        grid-template-columns: 1fr;
+    }
+
+    .recent-messages.is-list-view .media-card {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .recent-messages.is-list-view .media-card__figure {
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 768px) {
+    .media-gallery-grid {
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    }
+
+    .toolbar {
+        flex-direction: column;
+        align-items: flex-start;
+    }
 }

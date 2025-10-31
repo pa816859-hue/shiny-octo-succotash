@@ -4,9 +4,11 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - MediaGallery</title>
-    <link rel="stylesheet" href="~/css/site.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/css/lightgallery-bundle.min.css" integrity="sha384-e2zuYDhBUmEGmDqsJ0OmxLKkMl2Hg+yaGoQUfx/kO5+VC1toDJPugQwnzkXDqRoC" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.css" integrity="sha384-EMu93gX5MIGiBMCkMR/8WFrvx1vhx4kY+5aoBT+oyZ+cW4uRdmNf54juOSeS5h5C" crossorigin="anonymous">
 </head>
-<body>
+<body data-media-root='@Url.Content("~/media/")'>
     <header>
         <nav class="navbar">
             <div class="container">
@@ -30,6 +32,12 @@
         </div>
     </footer>
 
+    <script src="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/lightgallery.umd.min.js" integrity="sha384-5fWx8AQXn+5iQKnx5OqZDtJCwOY7iS1e6GLoAKYJRzBtMaUx8+HDfFTZ68GzkwoO" crossorigin="anonymous" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/plugins/thumbnail/lg-thumbnail.umd.min.js" integrity="sha384-IYYH6f8Y1ZR+FtOgv9yvF0xxMLY9Huzr7QAtsUGenGATvWTaeBB8LlKNeNo10XK8" crossorigin="anonymous" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/plugins/zoom/lg-zoom.umd.min.js" integrity="sha384-TkmURjDY10o8Yr8xAVqeD6KC6jh+K5KADw7gI7n4hK9SE5e0pXwN4J9IBdUgX9Mp" crossorigin="anonymous" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/plugins/fullscreen/lg-fullscreen.umd.min.js" integrity="sha384-7dywO2eWY8A+hqKWdbr5GIFrwuWR5oS5VqzP67sCMnCR1CapDzhd2CuxO9XTZtuV" crossorigin="anonymous" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/plugins/autoplay/lg-autoplay.umd.min.js" integrity="sha384-Ms5ihYaU9i8DvQivvjf9lJLnPfOySc5dElL3d5wftUedE38v07+RQ2bLwLeWiLr0" crossorigin="anonymous" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.polyfilled.min.js" integrity="sha384-EAEkPf9NZUWmJx8p/GzP4x2Xid8EWkpda5Z/GkB4WoonWgpzqyt/X5vJYk9xaTN7" crossorigin="anonymous" defer></script>
     @RenderSection("Scripts", required: false)
 </body>
 </html>

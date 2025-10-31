@@ -1,0 +1,60 @@
+@using System.Text.Json
+@{
+    ViewData["Title"] = "User Profile";
+    var profile = new
+    {
+        userId = 42,
+        username = "@galleryfan",
+        displayName = "Gallery Fan",
+        bio = "Curator of the most interesting finds across the network.",
+        tags = new[]
+        {
+            new { label = "architecture", weight = 12 },
+            new { label = "night", weight = 7 },
+            new { label = "4k", weight = 4 }
+        },
+        media = new[]
+        {
+            new { type = "photo", title = "City lights", filePath = "photos/profile-city.jpg", width = 2048, height = 1365, isAccessible = true, addedOn = "2024-02-18T21:10:00Z", views = 1520, tags = new[] { "architecture", "night" } },
+            new { type = "video", title = "Time-lapse", filePath = "videos/profile-timelapse.mp4", width = 1920, height = 1080, isAccessible = true, addedOn = "2024-03-02T16:30:00Z", views = 980, tags = new[] { "timelapse", "4k" } },
+            new { type = "photo", title = "Private still", filePath = "photos/private-still.jpg", width = 1200, height = 800, isAccessible = false, addedOn = "2024-01-12T09:00:00Z", views = 10, tags = new[] { "private" } }
+        }
+    };
+}
+
+<section class="page-header">
+    <h1>@profile.displayName</h1>
+    <p class="lead">@profile.bio</p>
+</section>
+
+<section class="user-profile" data-profile-endpoint="/api/users/@profile.userId" data-media-root="@Url.Content("~/media/")">
+    <aside class="user-profile__sidebar">
+        <div class="user-profile__identity">
+            <h2>@profile.username</h2>
+            <p>User ID: <strong>@profile.userId</strong></p>
+        </div>
+        <div class="user-profile__filters" aria-label="Sort and filter media">
+            <div class="button-group">
+                <button class="btn" data-sort="recent" type="button">Most recent</button>
+                <button class="btn" data-sort="popular" type="button">Most popular</button>
+            </div>
+            <div class="chip-list" data-filter-group>
+                @foreach (var tag in profile.tags)
+                {
+                    <button class="chip" type="button" data-filter-tag="@tag.label">@tag.label (@tag.weight)</button>
+                }
+            </div>
+        </div>
+    </aside>
+
+    <div class="user-profile__gallery" data-gallery tabindex="0" aria-label="User media gallery"></div>
+    <div class="scroll-status" data-scroll-status aria-live="polite"></div>
+</section>
+
+<script type="application/json" id="user-profile-data">
+    @Html.Raw(JsonSerializer.Serialize(profile))
+</script>
+
+@section Scripts {
+    <script type="module" src="~/js/userProfile.js" asp-append-version="true"></script>
+}
