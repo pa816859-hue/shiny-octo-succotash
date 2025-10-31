@@ -15,4 +15,16 @@ public interface ITagRepository
         int offset,
         int pageSize,
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<TagSummaryDto>> GetTagSummariesAsync(
+        int offset,
+        int limit,
+        long? userId,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<TagDetailDto>> GetTagDetailsAsync(
+        string tag,
+        int offset,
+        int limit,
+        CancellationToken cancellationToken = default);
 }

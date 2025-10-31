@@ -1,3 +1,4 @@
+using System;
 using MediaGallery.Web.Infrastructure.Data;
 using Xunit;
 
@@ -36,5 +37,53 @@ public class UserRepositoryTests
         var parameters = executor.CapturedParameters[0];
         Assert.Equal(25, parameters["@Offset"]);
         Assert.Equal(500, parameters["@PageSize"]);
+    }
+
+    [Fact]
+    public async Task GetUserByIdAsync_ReturnsNullWhenNotFound()
+    {
+        var reader = new FakeDbDataReader.Builder()
+            .WithColumn("UserID", typeof(long))
+            .WithColumn("LastUpdate", typeof(DateTime))
+            .WithColumn("FirstName", typeof(string))
+            .WithColumn("LastName", typeof(string))
+            .WithColumn("Username", typeof(string))
+            .Build();
+
+        var executor = new FakeSqlCommandExecutor(new[] { reader });
+        var repository = new UserRepository(new FakeSqlConnectionFactory(), executor);
+
+        var result = await repository.GetUserByIdAsync(123L, CancellationToken.None);
+
+        Assert.Null(result);
+        Assert.Single(executor.CapturedParameters);
+        Assert.Equal(123L, executor.CapturedParameters[0]["@UserId"]);
+    }
+
+    [Fact]
+    public async Task GetUserByIdAsync_ReturnsUserWhenFound()
+    {
+        var lastUpdate = new DateTime(2024, 3, 5, 12, 0, 0, DateTimeKind.Utc);
+
+        var reader = new FakeDbDataReader.Builder()
+            .WithColumn("UserID", typeof(long))
+            .WithColumn("LastUpdate", typeof(DateTime))
+            .WithColumn("FirstName", typeof(string))
+            .WithColumn("LastName", typeof(string))
+            .WithColumn("Username", typeof(string))
+            .WithRow(987L, lastUpdate, "Jane", "Doe", "jane_d")
+            .Build();
+
+        var executor = new FakeSqlCommandExecutor(new[] { reader });
+        var repository = new UserRepository(new FakeSqlConnectionFactory(), executor);
+
+        var result = await repository.GetUserByIdAsync(987L, CancellationToken.None);
+
+        Assert.NotNull(result);
+        Assert.Equal(987L, result!.UserId);
+        Assert.Equal(lastUpdate, result.LastUpdate);
+        Assert.Equal("Jane", result.FirstName);
+        Assert.Equal("Doe", result.LastName);
+        Assert.Equal("jane_d", result.Username);
     }
 }

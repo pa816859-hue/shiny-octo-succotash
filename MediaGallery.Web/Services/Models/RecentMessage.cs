@@ -14,7 +14,9 @@ public sealed class RecentMessage
         DateTime sentDate,
         string? messageText,
         long? photoId,
-        long? videoId)
+        string? photoPath,
+        long? videoId,
+        string? videoPath)
     {
         ChannelId = channelId;
         MessageId = messageId;
@@ -25,7 +27,9 @@ public sealed class RecentMessage
         SentDate = sentDate;
         MessageText = messageText;
         PhotoId = photoId;
+        PhotoPath = photoPath;
         VideoId = videoId;
+        VideoPath = videoPath;
     }
 
     public long ChannelId { get; }
@@ -46,7 +50,11 @@ public sealed class RecentMessage
 
     public long? PhotoId { get; }
 
+    public string? PhotoPath { get; }
+
     public long? VideoId { get; }
+
+    public string? VideoPath { get; }
 
     public string DisplayName => DisplayNameFormatter.Build(UserId, Username, FirstName, LastName);
 }

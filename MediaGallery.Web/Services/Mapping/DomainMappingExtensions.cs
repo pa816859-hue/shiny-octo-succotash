@@ -8,26 +8,26 @@ namespace MediaGallery.Web.Services.Mapping;
 
 public static class DomainMappingExtensions
 {
-    public static RecentMessage ToRecentMessage(this MessageDto message, UserDto? user = null)
+    public static RecentMessage ToRecentMessage(this MessageDetailDto message)
     {
         if (message is null)
         {
             throw new ArgumentNullException(nameof(message));
         }
 
-        var sourceUserId = user?.UserId ?? message.UserId;
-
         return new RecentMessage(
             message.ChannelId,
             message.MessageId,
-            sourceUserId,
-            user?.Username,
-            user?.FirstName,
-            user?.LastName,
+            message.UserId,
+            message.Username,
+            message.FirstName,
+            message.LastName,
             message.SentDate,
             message.MessageText,
             message.PhotoId,
-            message.VideoId);
+            message.PhotoPath,
+            message.VideoId,
+            message.VideoPath);
     }
 
     public static UserProfile ToUserProfile(this UserDto user, IEnumerable<UserTagDto>? tags = null)
@@ -49,48 +49,44 @@ public static class DomainMappingExtensions
             tagList);
     }
 
-    public static TaggedPhoto ToTaggedPhoto(this PhotoDto photo, IEnumerable<PhotoTagDto> tags, UserDto? user = null)
+    public static TaggedPhoto ToTaggedPhoto(this TagDetailDto detail)
     {
-        if (photo is null)
+        if (detail is null)
         {
-            throw new ArgumentNullException(nameof(photo));
+            throw new ArgumentNullException(nameof(detail));
         }
 
-        if (tags is null)
+        var tags = new List<PhotoTag>
         {
-            throw new ArgumentNullException(nameof(tags));
-        }
-
-        var photoTags = tags
-            .Where(tag => tag.PhotoId == photo.PhotoId)
-            .Select(tag => new PhotoTag(tag.Tag, tag.Score))
-            .OrderByDescending(tag => tag.Score)
-            .ThenBy(tag => tag.Tag, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+            new(detail.Tag, detail.Score)
+        };
 
         return new TaggedPhoto(
-            photo.PhotoId,
-            photo.FilePath,
-            photo.AddedOn,
-            photoTags,
-            user?.UserId,
-            user?.Username,
-            user?.FirstName,
-            user?.LastName);
+            detail.PhotoId,
+            detail.PhotoPath,
+            detail.PhotoAddedOn,
+            tags,
+            detail.ChannelId,
+            detail.MessageId,
+            detail.SentDate,
+            detail.MessageText,
+            detail.UserId,
+            detail.Username,
+            detail.FirstName,
+            detail.LastName);
     }
 
-    public static IReadOnlyList<PhotoTagSummary> ToPhotoTagSummaries(this IEnumerable<PhotoTagDto> tags, UserDto? user = null)
+    public static IReadOnlyList<PhotoTagSummary> ToPhotoTagSummaries(this IEnumerable<TagSummaryDto> tags, UserDto? user = null)
     {
         if (tags is null)
         {
             throw new ArgumentNullException(nameof(tags));
         }
 
-        var summaries = tags
-            .GroupBy(tag => tag.Tag, StringComparer.OrdinalIgnoreCase)
-            .Select(group => new PhotoTagSummary(
-                group.Key,
-                group.Select(item => item.PhotoId).Distinct().Count(),
+        return tags
+            .Select(tag => new PhotoTagSummary(
+                tag.Tag,
+                tag.PhotoCount,
                 user?.UserId,
                 user?.Username,
                 user?.FirstName,
@@ -98,7 +94,5 @@ public static class DomainMappingExtensions
             .OrderByDescending(summary => summary.PhotoCount)
             .ThenBy(summary => summary.Tag, StringComparer.OrdinalIgnoreCase)
             .ToList();
-
-        return summaries;
     }
 }
