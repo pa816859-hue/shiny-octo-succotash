@@ -3,7 +3,7 @@ using MediaGallery.Web.Configurations;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Options;
 
-namespace MediaGallery.Web.Services;
+namespace MediaGallery.Web.Infrastructure.Data;
 
 public class SqlConnectionFactory : IDbConnectionFactory
 {
