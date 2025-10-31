@@ -1,9 +1,16 @@
+using MediaGallery.Web.Configurations;
+using MediaGallery.Web.Services;
 using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+builder.Services.Configure<DatabaseOptions>(builder.Configuration.GetSection("ConnectionStrings"));
+builder.Services.Configure<MediaOptions>(builder.Configuration.GetSection("Media"));
+
 builder.Services.AddControllersWithViews();
+builder.Services.AddSingleton<IDbConnectionFactory, SqlConnectionFactory>();
+builder.Services.AddSingleton<IMediaFileProvider, MediaFileProvider>();
 
 var app = builder.Build();
 
