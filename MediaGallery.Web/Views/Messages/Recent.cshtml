@@ -1,20 +1,39 @@
+@model RecentMessagesPageViewModel
 @using System.Text.Json
 @{
     ViewData["Title"] = "Recent Messages";
-    var sampleMessages = new[]
-    {
-        new { messageId = 101, user = "Demo User", text = "Panoramic skyline from the latest drop.", mediaType = "photo", filePath = "photos/sample1.jpg", width = 1600, height = 900, isAccessible = true },
-        new { messageId = 102, user = "Another User", text = "Short teaser clip", mediaType = "video", filePath = "videos/teaser.mp4", width = 1920, height = 1080, isAccessible = true },
-        new { messageId = 103, user = "Restricted User", text = "This item should be hidden", mediaType = "photo", filePath = "photos/private.jpg", width = 1024, height = 768, isAccessible = false }
-    };
+    var jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+    var feedEndpoint = Url.Action(
+        "RecentData",
+        new
+        {
+            pageSize = Model.Query.PageSize,
+            channelId = Model.Query.ChannelId,
+            userId = Model.Query.UserId,
+            mediaOnly = Model.Query.MediaOnly,
+            sortOrder = Model.Query.SortOrder
+        });
 }
 
 <section class="page-header">
-    <h1>@ViewData["Title"]</h1>
-    <p class="lead">Scroll to browse new uploads. Launch the slideshow to lean back and enjoy.</p>
+    <div>
+        <h1>@ViewData["Title"]</h1>
+        <p class="lead">Live feed of monitored messenger channels with inline photo and video playback.</p>
+    </div>
+    <div class="page-header__meta">
+        <span class="badge">Page @Model.Feed.Pagination.PageNumber of @((Model.Feed.Pagination.HasNextPage ? "∞" : Model.Feed.Pagination.PageNumber.ToString()))</span>
+        @if (Model.Query.ChannelId.HasValue)
+        {
+            <span class="badge badge--subtle">Channel @Model.Query.ChannelId</span>
+        }
+        @if (Model.Query.UserId.HasValue)
+        {
+            <span class="badge badge--subtle">User @Model.Query.UserId</span>
+        }
+    </div>
 </section>
 
-<section class="recent-messages" data-feed-endpoint="/api/messages/recent" data-media-root="@Url.Content("~/media/")">
+<section class="recent-messages" data-feed-endpoint="@feedEndpoint" data-media-root="@Url.Content("~/media/")" data-initial-page="@Model.Query.Page" data-has-more="@Model.Feed.Pagination.HasNextPage.ToString().ToLowerInvariant()">
     <div class="toolbar" role="toolbar" aria-label="Recent message controls">
         <div class="button-group">
             <button class="btn" data-action="toggle-layout" type="button">Toggle layout</button>
@@ -22,7 +41,7 @@
         </div>
         <div class="button-group">
             <label class="switch" for="recent-only-media">
-                <input id="recent-only-media" type="checkbox" data-filter="onlyMedia" />
+                <input id="recent-only-media" type="checkbox" data-filter="onlyMedia" @(Model.Query.MediaOnly ? "checked" : string.Empty) />
                 <span>Only show items with media</span>
             </label>
         </div>
@@ -34,7 +53,7 @@
 </section>
 
 <script type="application/json" id="recent-messages-data">
-    @Html.Raw(JsonSerializer.Serialize(sampleMessages))
+    @Html.Raw(JsonSerializer.Serialize(Model.Feed.Messages, jsonOptions))
 </script>
 
 @section Scripts {

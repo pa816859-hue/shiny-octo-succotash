@@ -8,27 +8,33 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/css/lightgallery-bundle.min.css" integrity="sha384-e2zuYDhBUmEGmDqsJ0OmxLKkMl2Hg+yaGoQUfx/kO5+VC1toDJPugQwnzkXDqRoC" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.css" integrity="sha384-EMu93gX5MIGiBMCkMR/8WFrvx1vhx4kY+5aoBT+oyZ+cW4uRdmNf54juOSeS5h5C" crossorigin="anonymous">
 </head>
-<body data-media-root='@Url.Content("~/media/")'>
-    <header>
-        <nav class="navbar">
-            <div class="container">
-                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">MediaGallery</a>
-                <ul class="nav">
-                    <li class="nav-item"><a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">Home</a></li>
-                    <li class="nav-item"><a class="nav-link" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a></li>
-                </ul>
-            </div>
+<body class="app-shell" data-media-root='@Url.Content("~/media/")'>
+    <header class="app-shell__header">
+        <div class="app-shell__brand">
+            <a asp-controller="Home" asp-action="Index" class="brand">
+                <span class="brand__logo" aria-hidden="true">MG</span>
+                <span class="brand__text">MediaGallery</span>
+            </a>
+        </div>
+        <nav class="app-shell__nav" aria-label="Primary navigation">
+            <a class="nav-link" asp-controller="Home" asp-action="Index">Dashboard</a>
+            <a class="nav-link" asp-controller="Messages" asp-action="Recent">Messages</a>
+            <a class="nav-link" asp-controller="Tags" asp-action="Index">Tags</a>
+            <a class="nav-link" asp-controller="Home" asp-action="Privacy">About</a>
         </nav>
+        <div class="app-shell__actions">
+            <span class="pill">Dark mode</span>
+        </div>
     </header>
-    <div class="container">
-        <main role="main" class="pb-3">
-            @RenderBody()
-        </main>
-    </div>
 
-    <footer class="footer">
-        <div class="container">
-            &copy; @DateTime.Now.Year - MediaGallery
+    <main class="app-shell__main" role="main">
+        @RenderBody()
+    </main>
+
+    <footer class="app-shell__footer">
+        <div class="footer__content">
+            <p>&copy; @DateTime.Now.Year MediaGallery &middot; Crafted for messenger media intelligence.</p>
+            <p class="footer__meta">Lightbox powered by LightGallery &middot; Video playback via Plyr.</p>
         </div>
     </footer>
 

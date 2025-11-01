@@ -30,9 +30,12 @@ public class MessagesController : Controller
         var normalizedPage = page < 1 ? 1 : page;
         var normalizedPageSize = PaginationHelper.ClampPageSize(pageSize);
 
-        var viewModel = await _messageService
+        var feed = await _messageService
             .GetRecentMessagesAsync(normalizedPage, normalizedPageSize, channelId, userId, mediaOnly, sortOrder, cancellationToken)
             .ConfigureAwait(false);
+
+        var query = new MessageQueryViewModel(normalizedPage, normalizedPageSize, channelId, userId, mediaOnly, sortOrder);
+        var viewModel = new RecentMessagesPageViewModel(feed, query);
 
         return View(viewModel);
     }

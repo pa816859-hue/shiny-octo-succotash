@@ -49,6 +49,16 @@ public static class DomainMappingExtensions
             tagList);
     }
 
+    public static UserSummary ToUserSummary(this UserDto user)
+    {
+        if (user is null)
+        {
+            throw new ArgumentNullException(nameof(user));
+        }
+
+        return new UserSummary(user.UserId, user.Username, user.FirstName, user.LastName, user.LastUpdate);
+    }
+
     public static TaggedPhoto ToTaggedPhoto(this TagDetailDto detail)
     {
         if (detail is null)
@@ -94,5 +104,21 @@ public static class DomainMappingExtensions
             .OrderByDescending(summary => summary.PhotoCount)
             .ThenBy(summary => summary.Tag, StringComparer.OrdinalIgnoreCase)
             .ToList();
+    }
+
+    public static DashboardSummary ToDashboardSummary(this DashboardSummaryDto summary)
+    {
+        if (summary is null)
+        {
+            throw new ArgumentNullException(nameof(summary));
+        }
+
+        return new DashboardSummary(
+            summary.TotalMessages,
+            summary.TotalPhotos,
+            summary.TotalVideos,
+            summary.ActiveChannels,
+            summary.TotalUsers,
+            summary.LastMessageSentAt);
     }
 }

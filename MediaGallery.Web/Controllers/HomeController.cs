@@ -1,15 +1,27 @@
-using Microsoft.AspNetCore.Mvc;
-using MediaGallery.Web.ViewModels;
+using System;
 using System.Diagnostics;
+using System.Threading;
+using System.Threading.Tasks;
+using MediaGallery.Web.Services;
+using MediaGallery.Web.ViewModels;
+using Microsoft.AspNetCore.Mvc;
 
 namespace MediaGallery.Web.Controllers;
 
 public class HomeController : Controller
 {
-    [HttpGet]
-    public IActionResult Index()
+    private readonly IDashboardService _dashboardService;
+
+    public HomeController(IDashboardService dashboardService)
     {
-        return View();
+        _dashboardService = dashboardService ?? throw new ArgumentNullException(nameof(dashboardService));
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> Index(CancellationToken cancellationToken = default)
+    {
+        var viewModel = await _dashboardService.GetDashboardAsync(cancellationToken).ConfigureAwait(false);
+        return View(viewModel);
     }
 
     [HttpGet]

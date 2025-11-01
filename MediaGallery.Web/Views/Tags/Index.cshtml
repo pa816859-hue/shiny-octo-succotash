@@ -1,28 +1,42 @@
+@model TagIndexViewModel
+@using System.Linq
 @using System.Text.Json
 @{
     ViewData["Title"] = "Tags";
-    var tags = new[]
-    {
-        new { tag = "architecture", total = 128, highlight = new { type = "photo", filePath = "photos/arch-highlight.jpg", width = 1600, height = 900, isAccessible = true }, topScore = 0.98 },
-        new { tag = "night", total = 64, highlight = new { type = "photo", filePath = "photos/night-highlight.jpg", width = 1600, height = 900, isAccessible = true }, topScore = 0.87 },
-        new { tag = "timelapse", total = 22, highlight = new { type = "video", filePath = "videos/timelapse-highlight.mp4", width = 1920, height = 1080, isAccessible = true }, topScore = 0.92 }
-    };
+    var jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+    var detailEndpoint = Url.Action("DetailData", new { pageSize = 12 });
 }
 
 <section class="page-header">
-    <h1>@ViewData["Title"]</h1>
-    <p class="lead">Pick a tag to drill deeper into related photos and videos.</p>
+    <div>
+        <h1>@ViewData["Title"]</h1>
+        <p class="lead">Browse prominent tags and open their dedicated media streams.</p>
+    </div>
+    <div class="page-header__meta">
+        <span class="badge">@Model.Pagination.PageSize.ToString("N0") per page</span>
+        <span class="badge badge--subtle">Page @Model.Pagination.PageNumber</span>
+    </div>
 </section>
 
-<section class="tag-browser" data-tag-view="index" data-media-root="@Url.Content("~/media/")">
+<section class="tag-browser" data-tag-view="index" data-detail-endpoint="@detailEndpoint" data-media-root="@Url.Content("~/media/")">
     <div class="tag-browser__list" data-tag-list aria-label="Available tags">
-        @foreach (var tag in tags)
+        @foreach (var tag in Model.Tags)
         {
-            <article class="tag-card" data-tag="@tag.tag">
-                <h2>@tag.tag</h2>
-                <p>@tag.total items</p>
-                <button class="btn" type="button" data-action="preview-tag" data-tag="@tag.tag">Preview</button>
-                <a class="btn btn-link" asp-controller="Tags" asp-action="Detail" asp-route-tag="@tag.tag">Open detail</a>
+            <article class="tag-card" data-tag="@tag.Tag" data-count="@tag.PhotoCount">
+                <header>
+                    <h2>@tag.Tag</h2>
+                    <p>@tag.PhotoCount.ToString("N0") media items</p>
+                </header>
+                <footer class="tag-card__actions">
+                    <button class="btn" type="button" data-action="preview-tag" data-tag="@tag.Tag">Preview media</button>
+                    <a class="btn btn--ghost" asp-controller="Tags" asp-action="Detail" asp-route-tag="@tag.Tag">Open detail</a>
+                </footer>
+            </article>
+        }
+        @if (!Model.Tags.Any())
+        {
+            <article class="tag-card is-empty">
+                <p>No tags available.</p>
             </article>
         }
     </div>
@@ -30,12 +44,12 @@
     <aside class="tag-browser__preview" aria-live="polite">
         <h2 class="tag-browser__preview-title" data-preview-title>Preview</h2>
         <div class="media-gallery-grid" data-preview-gallery></div>
-        <div class="scroll-status" data-scroll-status aria-live="polite"></div>
+        <div class="scroll-status" data-scroll-status aria-live="polite">Select a tag to load preview media.</div>
     </aside>
 </section>
 
-<script type="application/json" id="tag-index-data">
-    @Html.Raw(JsonSerializer.Serialize(tags))
+<script type="application/json" id="tag-index-metadata">
+    @Html.Raw(JsonSerializer.Serialize(Model.Tags.Select(tag => new { tag = tag.Tag, count = tag.PhotoCount }), jsonOptions))
 </script>
 
 @section Scripts {

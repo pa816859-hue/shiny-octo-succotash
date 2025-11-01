@@ -1,8 +1,136 @@
+@model DashboardViewModel
+@using System.Linq
+@using System.Text.Json
 @{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "Overview";
+    var jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Build your media gallery starting from this baseline ASP.NET Core MVC project.</p>
-</div>
+<section class="page-hero">
+    <div class="page-hero__body">
+        <h1 class="page-hero__title">Stay on top of the gallery</h1>
+        <p class="page-hero__subtitle">
+            Review activity, discover trending tags, and open the latest drops straight from the dashboard.
+        </p>
+    </div>
+    <div class="page-hero__meta">
+        <span class="badge">@Model.Summary.TotalMessages.ToString("N0") messages indexed</span>
+        @if (Model.Summary.LastMessageSentAt.HasValue)
+        {
+            <span class="badge badge--subtle">Last update @Model.Summary.LastMessageSentAt.Value.ToLocalTime().ToString("g")</span>
+        }
+    </div>
+</section>
+
+<section class="dashboard-grid" aria-label="Key metrics">
+    <article class="stat-card">
+        <h2>Messages</h2>
+        <p class="stat-card__value">@Model.Summary.TotalMessages.ToString("N0")</p>
+        <p class="stat-card__hint">Tracked across all monitored channels.</p>
+    </article>
+    <article class="stat-card">
+        <h2>Photos</h2>
+        <p class="stat-card__value">@Model.Summary.TotalPhotos.ToString("N0")</p>
+        <p class="stat-card__hint">Optimised for the media lightbox experience.</p>
+    </article>
+    <article class="stat-card">
+        <h2>Videos</h2>
+        <p class="stat-card__value">@Model.Summary.TotalVideos.ToString("N0")</p>
+        <p class="stat-card__hint">Playable in-line with smooth controls.</p>
+    </article>
+    <article class="stat-card">
+        <h2>Active channels</h2>
+        <p class="stat-card__value">@Model.Summary.ActiveChannels.ToString("N0")</p>
+        <p class="stat-card__hint">Currently monitored messenger sources.</p>
+    </article>
+    <article class="stat-card">
+        <h2>Contributors</h2>
+        <p class="stat-card__value">@Model.Summary.TotalUsers.ToString("N0")</p>
+        <p class="stat-card__hint">Unique users with tracked activity.</p>
+    </article>
+    <article class="stat-card stat-card--accent">
+        <h2>Jump in</h2>
+        <p class="stat-card__value">Browse feeds</p>
+        <div class="stat-card__actions">
+            <a class="btn" asp-controller="Messages" asp-action="Recent">Recent feed</a>
+            <a class="btn" asp-controller="Tags" asp-action="Index">Explore tags</a>
+        </div>
+    </article>
+</section>
+
+<section class="panel" aria-label="Trending tags">
+    <header class="panel__header">
+        <h2>Trending tags</h2>
+        <p>Top indexed keywords ranked by the number of associated photos.</p>
+    </header>
+    <div class="tag-list">
+        @foreach (var tag in Model.TopTags)
+        {
+            <a class="chip" asp-controller="Tags" asp-action="Detail" asp-route-tag="@tag.Tag">
+                <span class="chip__label">@tag.Tag</span>
+                <span class="chip__meta">@tag.PhotoCount.ToString("N0") media</span>
+            </a>
+        }
+        @if (!Model.TopTags.Any())
+        {
+            <p class="panel__empty">No tags were found for the selected filters.</p>
+        }
+    </div>
+</section>
+
+<section class="panel" aria-label="Newest contributors">
+    <header class="panel__header">
+        <h2>Newest contributors</h2>
+        <p>Latest users to appear in the data set.</p>
+    </header>
+    <ul class="user-list">
+        @foreach (var user in Model.RecentUsers)
+        {
+            var initialsSource = string.IsNullOrWhiteSpace(user.DisplayName)
+                ? user.UserId.ToString()
+                : user.DisplayName;
+            var initials = initialsSource.Length <= 2
+                ? initialsSource.ToUpperInvariant()
+                : initialsSource[..2].ToUpperInvariant();
+            <li class="user-list__item">
+                <div class="user-list__avatar" aria-hidden="true">@initials</div>
+                <div class="user-list__meta">
+                    <a asp-controller="Users" asp-action="Profile" asp-route-id="@user.UserId">@user.DisplayName</a>
+                    <span class="user-list__hint">Last active @user.LastUpdate.ToLocalTime().ToString("g")</span>
+                </div>
+            </li>
+        }
+        @if (!Model.RecentUsers.Any())
+        {
+            <li class="panel__empty">No recent user activity detected.</li>
+        }
+    </ul>
+</section>
+
+<section class="panel" aria-label="Latest media">
+    <header class="panel__header panel__header--with-action">
+        <div>
+            <h2>Latest media</h2>
+            <p>Tap into the freshest uploads without leaving the dashboard.</p>
+        </div>
+        <a class="btn btn--ghost" asp-controller="Messages" asp-action="Recent">Open full feed</a>
+    </header>
+    <div class="recent-messages recent-messages--compact" data-media-root="@Url.Content("~/media/")" data-has-more="false">
+        <div class="toolbar" role="toolbar" aria-label="Latest media controls">
+            <div class="button-group">
+                <button class="btn" data-action="toggle-layout" type="button">Toggle layout</button>
+            </div>
+        </div>
+        <div class="media-gallery-grid" data-gallery tabindex="0" aria-live="polite"></div>
+        <div class="scroll-status" data-scroll-status aria-live="polite"></div>
+        <div class="scroll-sentinel" data-scroll-sentinel></div>
+    </div>
+</section>
+
+<script type="application/json" id="recent-messages-data">
+    @Html.Raw(JsonSerializer.Serialize(Model.RecentMessages, jsonOptions))
+</script>
+
+@section Scripts {
+    <script type="module" src="~/js/recentMessages.js" asp-append-version="true"></script>
+}
