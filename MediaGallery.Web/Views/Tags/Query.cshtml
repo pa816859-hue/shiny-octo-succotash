@@ -1,0 +1,165 @@
+@model MediaGallery.Web.ViewModels.TagQueryResultViewModel
+@using System.Linq
+@{
+    var includes = Model.Includes ?? Array.Empty<string>();
+    var excludes = Model.Excludes ?? Array.Empty<string>();
+    var includeValues = includes.ToArray();
+    var excludeValues = excludes.ToArray();
+    var pagination = Model.Photos.Pagination;
+    var photos = Model.Photos.Items;
+
+    string BuildLabel()
+    {
+        var includeLabel = includeValues.Length > 0
+            ? string.Join(", ", includeValues.Select(tag => $"+{tag}"))
+            : string.Empty;
+        var excludeLabel = excludeValues.Length > 0
+            ? string.Join(", ", excludeValues.Select(tag => $"-{tag}"))
+            : string.Empty;
+
+        if (!string.IsNullOrEmpty(includeLabel) && !string.IsNullOrEmpty(excludeLabel))
+        {
+            return $"{includeLabel} {excludeLabel}";
+        }
+
+        if (!string.IsNullOrEmpty(includeLabel))
+        {
+            return includeLabel;
+        }
+
+        if (!string.IsNullOrEmpty(excludeLabel))
+        {
+            return excludeLabel;
+        }
+
+        return "Tag query";
+    }
+
+    string FormatTagList(IReadOnlyList<string> tags, string prefix)
+    {
+        if (tags.Count == 0)
+        {
+            return "None";
+        }
+
+        return string.Join(", ", tags.Select(tag => $"{prefix}{tag}"));
+    }
+
+    string? MediaUrl(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return null;
+        }
+
+        var normalized = path.Replace("\\", "/").TrimStart('/');
+        return Url.Content($"~/media/{normalized}");
+    }
+
+    string BuildPageUrl(int pageNumber)
+    {
+        return Url.Action("Query", "Tags", new
+        {
+            page = pageNumber,
+            pageSize = pagination.PageSize,
+            include = includeValues,
+            exclude = excludeValues
+        }) ?? string.Empty;
+    }
+
+    var label = BuildLabel();
+    ViewData["Title"] = $"Tag query · {label}";
+}
+
+<section class="page-header">
+    <span class="page-header__eyebrow">Tag query</span>
+    <h1>@ViewData["Title"]</h1>
+    <p class="lead">Media that matches the query. Includes: <strong>@FormatTagList(includeValues, "+")</strong>. Excludes: <strong>@FormatTagList(excludeValues, "-")</strong>.</p>
+</section>
+
+<section class="tag-detail" data-tag-view="query" data-media-root="@Url.Content("~/media/")">
+    @if (!photos.Any())
+    {
+        <div class="empty-state">
+            <p>No media matched this tag combination.</p>
+        </div>
+    }
+    else
+    {
+        <div class="media-gallery-grid" data-gallery aria-label="Media for @label">
+            @foreach (var photo in photos)
+            {
+                var mediaPath = MediaUrl(photo.FilePath);
+                <article class="media-card" data-has-media="true">
+                    <header class="media-card__header">
+                        <p class="media-card__title">
+                            @if (photo.UserId.HasValue)
+                            {
+                                <a class="media-card__user-link" asp-controller="Users" asp-action="Profile" asp-route-id="@photo.UserId.Value">
+                                    @photo.DisplayName
+                                </a>
+                            }
+                            else
+                            {
+                                @photo.DisplayName
+                            }
+                        </p>
+                        <span class="media-card__meta">@photo.AddedOn.ToLocalTime().ToString("g")</span>
+                    </header>
+                    <div class="media-card__body">
+                        @if (mediaPath is not null)
+                        {
+                            <div class="media-card__media" data-lg-item>
+                                <a href="@mediaPath" data-sub-html="<p>@(photo.MessageText ?? string.Empty)</p>">
+                                    <img src="@mediaPath" alt="Photo that matches @label">
+                                </a>
+                            </div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(photo.MessageText))
+                        {
+                            <p class="media-card__text">@photo.MessageText</p>
+                        }
+                        @if (photo.Tags.Any())
+                        {
+                            <div class="media-card__tags">
+                                @foreach (var tag in photo.Tags)
+                                {
+                                    <span>@tag.Tag (@tag.Score.ToString("P1"))</span>
+                                }
+                            </div>
+                        }
+                    </div>
+                </article>
+            }
+        </div>
+    }
+
+    <div class="scroll-status">Page @pagination.PageNumber of query results.</div>
+
+    <nav class="pagination" aria-label="Tag query pagination">
+        <span class="pagination__info">Page @pagination.PageNumber</span>
+        <div class="pagination__actions">
+            @if (pagination.HasPreviousPage)
+            {
+                <a class="btn btn-outline" href="@BuildPageUrl(pagination.PageNumber - 1)">Previous</a>
+            }
+            else
+            {
+                <button class="btn btn-outline" type="button" disabled>Previous</button>
+            }
+
+            @if (pagination.HasNextPage)
+            {
+                <a class="btn btn-outline" href="@BuildPageUrl(pagination.PageNumber + 1)">Next</a>
+            }
+            else
+            {
+                <button class="btn btn-outline" type="button" disabled>Next</button>
+            }
+        </div>
+    </nav>
+</section>
+
+@section Scripts {
+    <script type="module" src="~/js/tagGallery.js" asp-append-version="true"></script>
+}

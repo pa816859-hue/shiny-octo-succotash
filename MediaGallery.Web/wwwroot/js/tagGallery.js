@@ -236,9 +236,19 @@ function initTagIndex() {
     const excludeList = container.querySelector('[data-exclude-list]');
     const searchInput = container.querySelector('[data-tag-search]');
     const tagCount = container.querySelector('[data-tag-count]');
+    let tagGrid = container.querySelector('[data-tag-grid]');
+    const openDetailButton = container.querySelector('[data-action="open-query-detail"]');
     const mediaRoot = container.dataset.mediaRoot || document.body.dataset.mediaRoot || '';
     const queryEndpoint = container.dataset.queryEndpoint;
+    const indexEndpoint = container.dataset.indexEndpoint;
+    const detailPage = container.dataset.detailPage;
+    const queryPage = container.dataset.queryPage;
     const pageSize = Number(container.dataset.previewPageSize || '6');
+    const tagPageSize = Number(container.dataset.pageSize || '0');
+    const userFilter = container.dataset.userId || '';
+    const tagCardRegistry = new Map();
+    let allTagsLoaded = !indexEndpoint;
+    let loadAllTagsPromise = null;
 
     if (!previewGallery) {
         return;
@@ -260,8 +270,229 @@ function initTagIndex() {
         exclude: []
     };
 
+    function registerCardElement(card) {
+        if (!card) {
+            return null;
+        }
+
+        const tagValue = card.dataset.tag;
+        if (!tagValue) {
+            return null;
+        }
+
+        const normalized = normalizeTag(tagValue);
+        if (tagCardRegistry.has(normalized)) {
+            return tagCardRegistry.get(normalized);
+        }
+
+        tagCardRegistry.set(normalized, card);
+        return card;
+    }
+
+    function ensureCardRegistry() {
+        if (!tagGrid) {
+            tagGrid = container.querySelector('[data-tag-grid]');
+        }
+
+        if (!tagGrid || tagCardRegistry.size > 0) {
+            return;
+        }
+
+        tagGrid.querySelectorAll('.tag-card').forEach((card) => {
+            registerCardElement(card);
+        });
+    }
+
+    function buildDetailUrl(tag) {
+        if (!detailPage || !tag) {
+            return '#';
+        }
+
+        const url = new URL(detailPage, window.location.origin);
+        url.searchParams.set('tag', tag);
+        return url.toString();
+    }
+
+    function createTagSummaryCard(summary) {
+        if (!summary || !summary.tag) {
+            return null;
+        }
+
+        const card = document.createElement('article');
+        card.className = 'tag-card';
+        card.dataset.tag = summary.tag;
+
+        const previewButton = document.createElement('button');
+        previewButton.className = 'tag-card__preview';
+        previewButton.type = 'button';
+        previewButton.dataset.action = 'preview-tag';
+        previewButton.dataset.tag = summary.tag;
+        previewButton.title = `Preview ${summary.tag}`;
+        previewButton.textContent = summary.tag;
+        card.appendChild(previewButton);
+
+        const count = Number(summary.photoCount) || 0;
+        const countElement = document.createElement('p');
+        countElement.className = 'tag-card__count';
+        countElement.textContent = `${count} media item${count === 1 ? '' : 's'}`;
+        card.appendChild(countElement);
+
+        const actions = document.createElement('div');
+        actions.className = 'tag-card__actions';
+
+        const includeButton = document.createElement('button');
+        includeButton.className = 'tag-card__action tag-card__action--include';
+        includeButton.type = 'button';
+        includeButton.dataset.action = 'include-tag';
+        includeButton.dataset.tag = summary.tag;
+        includeButton.title = `Include ${summary.tag}`;
+        includeButton.setAttribute('aria-label', `Include tag ${summary.tag}`);
+        includeButton.textContent = '+';
+        actions.appendChild(includeButton);
+
+        const excludeButton = document.createElement('button');
+        excludeButton.className = 'tag-card__action tag-card__action--exclude';
+        excludeButton.type = 'button';
+        excludeButton.dataset.action = 'exclude-tag';
+        excludeButton.dataset.tag = summary.tag;
+        excludeButton.title = `Exclude ${summary.tag}`;
+        excludeButton.setAttribute('aria-label', `Exclude tag ${summary.tag}`);
+        excludeButton.textContent = '−';
+        actions.appendChild(excludeButton);
+
+        const detailLink = document.createElement('a');
+        detailLink.className = 'tag-card__detail';
+        detailLink.href = buildDetailUrl(summary.tag);
+        detailLink.title = `Open detail for ${summary.tag}`;
+        detailLink.textContent = 'Detail';
+        actions.appendChild(detailLink);
+
+        card.appendChild(actions);
+        return card;
+    }
+
+    function appendTagSummaries(items) {
+        if (!Array.isArray(items) || !items.length) {
+            return;
+        }
+
+        if (!tagGrid) {
+            tagGrid = container.querySelector('[data-tag-grid]');
+        }
+
+        if (!tagGrid) {
+            const list = container.querySelector('[data-tag-list]');
+            if (!list) {
+                return;
+            }
+
+            tagGrid = document.createElement('div');
+            tagGrid.className = 'tag-browser__grid';
+            tagGrid.dataset.tagGrid = '';
+
+            const emptyState = list.querySelector('.empty-state');
+            if (emptyState) {
+                emptyState.remove();
+            }
+
+            list.appendChild(tagGrid);
+        }
+
+        const fragment = document.createDocumentFragment();
+
+        items.forEach((summary) => {
+            const tagValue = summary?.tag;
+            const normalized = normalizeTag(tagValue);
+            if (!normalized || tagCardRegistry.has(normalized)) {
+                return;
+            }
+
+            const card = createTagSummaryCard(summary);
+            if (!card) {
+                return;
+            }
+
+            registerCardElement(card);
+            fragment.appendChild(card);
+        });
+
+        if (fragment.childNodes.length > 0) {
+            tagGrid.appendChild(fragment);
+            updateCardIndicators();
+            applySearchFilter(searchInput ? searchInput.value : '');
+        }
+    }
+
+    async function fetchTagIndexPage(pageNumber) {
+        if (!indexEndpoint) {
+            return null;
+        }
+
+        const url = new URL(indexEndpoint, window.location.origin);
+        url.searchParams.set('page', String(pageNumber));
+        if (tagPageSize > 0) {
+            url.searchParams.set('pageSize', String(tagPageSize));
+        }
+        if (userFilter) {
+            url.searchParams.set('userId', userFilter);
+        }
+
+        const response = await fetch(url.toString(), { headers: { Accept: 'application/json' } });
+        if (!response.ok) {
+            throw new Error(`Unable to fetch tag page ${pageNumber} (status ${response.status})`);
+        }
+
+        return response.json();
+    }
+
+    async function ensureAllTagsLoaded() {
+        if (allTagsLoaded) {
+            return;
+        }
+
+        if (loadAllTagsPromise) {
+            return loadAllTagsPromise;
+        }
+
+        loadAllTagsPromise = (async () => {
+            let pageNumber = 1;
+            let hasMore = true;
+
+            while (hasMore) {
+                // eslint-disable-next-line no-await-in-loop
+                const payload = await fetchTagIndexPage(pageNumber);
+                if (!payload) {
+                    break;
+                }
+
+                const items = Array.isArray(payload.items) ? payload.items : [];
+                appendTagSummaries(items);
+
+                const paginationData = payload.pagination;
+                if (!paginationData || !paginationData.hasNextPage) {
+                    hasMore = false;
+                }
+
+                if (items.length === 0 && (!paginationData || !paginationData.hasNextPage)) {
+                    hasMore = false;
+                }
+
+                pageNumber += 1;
+            }
+
+            allTagsLoaded = true;
+            loadAllTagsPromise = null;
+        })().catch((error) => {
+            console.error('Unable to load complete tag list', error);
+            loadAllTagsPromise = null;
+        });
+
+        return loadAllTagsPromise;
+    }
+
     function getCards() {
-        return Array.from(container.querySelectorAll('.tag-card'));
+        ensureCardRegistry();
+        return Array.from(tagCardRegistry.values());
     }
 
     function updateCardIndicators() {
@@ -367,6 +598,11 @@ function initTagIndex() {
         renderChipList(includeList, queryState.include, 'include');
         renderChipList(excludeList, queryState.exclude, 'exclude');
         updateCardIndicators();
+        if (openDetailButton) {
+            const hasQuery = queryState.include.length > 0 || queryState.exclude.length > 0;
+            openDetailButton.disabled = !hasQuery;
+            openDetailButton.setAttribute('aria-disabled', hasQuery ? 'false' : 'true');
+        }
     }
 
     function addTagToQuery(type, tag) {
@@ -423,6 +659,30 @@ function initTagIndex() {
         setStatus('Add tags to the query or preview a tag to see media here.');
     }
 
+    function openQueryDetail() {
+        if (!queryPage) {
+            return;
+        }
+
+        if (queryState.include.length === 0 && queryState.exclude.length === 0) {
+            return;
+        }
+
+        const url = new URL(queryPage, window.location.origin);
+        queryState.include.forEach((tag) => {
+            if (tag) {
+                url.searchParams.append('include', tag);
+            }
+        });
+        queryState.exclude.forEach((tag) => {
+            if (tag) {
+                url.searchParams.append('exclude', tag);
+            }
+        });
+
+        window.location.href = url.toString();
+    }
+
     container.addEventListener('click', (event) => {
         const target = event.target instanceof HTMLElement ? event.target.closest('[data-action]') : null;
         if (!target) {
@@ -442,6 +702,9 @@ function initTagIndex() {
                 break;
             case 'run-query':
                 runQuery();
+                break;
+            case 'open-query-detail':
+                openQueryDetail();
                 break;
             case 'reset-query':
                 resetQuery();
@@ -478,30 +741,38 @@ function initTagIndex() {
     }
 
     if (searchInput) {
-        const handleSearch = (event) => {
-            applySearchFilter(event.target.value);
+        const handleSearch = async (event) => {
+            const term = event.target.value;
+            applySearchFilter(term);
+            try {
+                await ensureAllTagsLoaded();
+                applySearchFilter(searchInput.value);
+            } catch (error) {
+                console.error('Unable to expand tag search results', error);
+            }
         };
 
         searchInput.addEventListener('input', handleSearch);
         searchInput.addEventListener('search', handleSearch);
     }
 
+    ensureCardRegistry();
     renderQueryState();
     applySearchFilter(searchInput ? searchInput.value : '');
 }
 
 function initTagDetail() {
-    const container = document.querySelector('.tag-detail[data-tag-view="detail"]');
-    if (!container) {
+    const containers = document.querySelectorAll('.tag-detail[data-tag-view]');
+    if (!containers.length) {
         return;
     }
 
-    const gallery = container.querySelector('[data-gallery]');
-    if (!gallery) {
-        return;
-    }
-
-    ensureGallery(gallery);
+    containers.forEach((container) => {
+        const gallery = container.querySelector('[data-gallery]');
+        if (gallery) {
+            ensureGallery(gallery);
+        }
+    });
 }
 
 document.addEventListener('DOMContentLoaded', () => {

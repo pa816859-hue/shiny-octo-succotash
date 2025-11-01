@@ -36,6 +36,7 @@
         return Url.Action("Index", "Tags", parameters) ?? string.Empty;
     }
 
+    var userIdAttribute = hasUser ? userId.ToString() : string.Empty;
 }
 
 <section class="page-header">
@@ -59,7 +60,18 @@
     </div>
 </form>
 
-<section class="tag-browser" data-tag-view="index" data-media-root="@Url.Content("~/media/")" data-detail-endpoint="@Url.Action("DetailData", "Tags")" data-query-endpoint="@Url.Action("QueryData", "Tags")" data-preview-page-size="8">
+<section class="tag-browser"
+         data-tag-view="index"
+         data-media-root="@Url.Content("~/media/")"
+         data-detail-endpoint="@Url.Action("DetailData", "Tags")"
+         data-detail-page="@Url.Action("Detail", "Tags")"
+         data-query-endpoint="@Url.Action("QueryData", "Tags")"
+         data-query-page="@Url.Action("Query", "Tags")"
+         data-index-endpoint="@Url.Action("IndexData", "Tags")"
+         data-page-number="@pagination.PageNumber"
+         data-page-size="@pagination.PageSize"
+         data-user-id="@userIdAttribute"
+         data-preview-page-size="8">
     <div class="tag-browser__list" data-tag-list aria-label="Available tags">
         <div class="tag-browser__controls">
             <label class="sr-only" for="tagSearch">Search tags</label>
@@ -105,7 +117,8 @@
                 <div class="tag-query__chips" data-exclude-list></div>
             </div>
             <div class="tag-query__actions">
-                <button class="btn btn-primary" type="button" data-action="run-query">Run query</button>
+                <button class="btn btn-secondary" type="button" data-action="run-query">Refresh preview</button>
+                <button class="btn btn-primary" type="button" data-action="open-query-detail" disabled aria-disabled="true">Open full results</button>
                 <button class="btn btn-ghost" type="button" data-action="reset-query">Clear</button>
             </div>
         </section>
