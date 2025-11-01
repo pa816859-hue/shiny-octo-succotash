@@ -69,8 +69,23 @@
     <div class="filter-field">
         <label for="sortOrder">Sort order</label>
         <select id="sortOrder" name="sortOrder">
-            <option value="NewestFirst" @(sortOrder == MessageSortOrder.NewestFirst ? "selected" : null)>Newest first</option>
-            <option value="OldestFirst" @(sortOrder == MessageSortOrder.OldestFirst ? "selected" : null)>Oldest first</option>
+            @if (sortOrder == MessageSortOrder.NewestFirst)
+            {
+                <option value="NewestFirst" selected>Newest first</option>
+            }
+            else
+            {
+                <option value="NewestFirst">Newest first</option>
+            }
+
+            @if (sortOrder == MessageSortOrder.OldestFirst)
+            {
+                <option value="OldestFirst" selected>Oldest first</option>
+            }
+            else
+            {
+                <option value="OldestFirst">Oldest first</option>
+            }
         </select>
     </div>
     <div class="filter-field">
