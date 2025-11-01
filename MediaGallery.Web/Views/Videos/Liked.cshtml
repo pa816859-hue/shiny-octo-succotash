@@ -1,0 +1,38 @@
+@model VideoLikedListViewModel
+@{
+    ViewData["Title"] = "Liked videos";
+}
+
+<section class="video-liked">
+    <header class="video-liked__header">
+        <h1 class="video-liked__title">Liked videos</h1>
+        <p class="video-liked__subtitle">Every clip you've hearted while scrolling through TikTok mode.</p>
+        <div class="video-liked__actions">
+            <a class="btn btn-primary" asp-action="Watch" asp-controller="Videos">Back to TikTok mode</a>
+        </div>
+    </header>
+
+    @if (!Model.HasVideos)
+    {
+        <div class="video-liked__empty">
+            <p>You haven't liked any videos yet. Head back to TikTok mode and tap the heart to build this list.</p>
+        </div>
+    }
+    else
+    {
+        <div class="video-liked__grid">
+            @foreach (var video in Model.Videos)
+            {
+                <article class="video-liked__item">
+                    <div class="video-liked__player">
+                        <video src="@video.SourceUrl" controls playsinline></video>
+                    </div>
+                    <div class="video-liked__meta">
+                        <span class="video-liked__id">Video #@video.VideoId</span>
+                        <span class="video-liked__timestamp">Added @video.AddedOn.ToString("g")</span>
+                    </div>
+                </article>
+            }
+        </div>
+    }
+</section>
