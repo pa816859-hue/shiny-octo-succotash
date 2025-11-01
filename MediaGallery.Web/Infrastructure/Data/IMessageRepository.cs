@@ -12,4 +12,9 @@ public interface IMessageRepository
         bool sortAscending,
         bool mediaOnly,
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<MessageDetailDto>> GetMediaChronologyAsync(
+        long? photoId,
+        long? videoId,
+        CancellationToken cancellationToken = default);
 }

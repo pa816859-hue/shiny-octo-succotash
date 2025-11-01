@@ -1,0 +1,104 @@
+@model MediaGallery.Web.ViewModels.MediaChronologyViewModel
+@using System.Linq
+@using MediaGallery.Web.Services.Models
+@{
+    var title = $"{Model.Heading} chronology";
+    ViewData["Title"] = title;
+
+    string? MediaUrl(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return null;
+        }
+
+        var normalized = path.Replace("\\", "/").TrimStart('/');
+        return Url.Content($"~/media/{normalized}");
+    }
+
+    var hasEntries = Model.Occurrences.Any();
+    var firstSeen = hasEntries ? Model.Occurrences.First().SentDate.ToLocalTime() : (DateTime?)null;
+    var lastSeen = hasEntries ? Model.Occurrences.Last().SentDate.ToLocalTime() : (DateTime?)null;
+    var mediaUrl = MediaUrl(Model.MediaPath);
+}
+
+<section class="page-header">
+    <span class="page-header__eyebrow">Media chronology</span>
+    <h1>@ViewData["Title"]</h1>
+    <p class="lead">Track every time this media item surfaced in the archive. Review who shared it, their caption, and the exact timestamp.</p>
+</section>
+
+<section class="media-chronology">
+    @if (Model.HasMedia && mediaUrl is not null)
+    {
+        <div class="media-chronology__media">
+            @if (Model.MediaType == MediaChronologyType.Photo)
+            {
+                <img src="@mediaUrl" alt="Preview for @Model.Heading" />
+            }
+            else
+            {
+                <video src="@mediaUrl" controls playsinline></video>
+            }
+        </div>
+    }
+
+    <div class="media-chronology__summary">
+        <div>
+            <h2>Summary</h2>
+            @if (hasEntries)
+            {
+                <p><strong>@Model.Occurrences.Count</strong> sighting@(Model.Occurrences.Count == 1 ? string.Empty : "s") captured.</p>
+                @if (firstSeen.HasValue)
+                {
+                    <p>First seen <time datetime="@firstSeen.Value.ToString("o")">@firstSeen.Value.ToString("f")</time>.</p>
+                }
+                @if (lastSeen.HasValue && lastSeen != firstSeen)
+                {
+                    <p>Last seen <time datetime="@lastSeen.Value.ToString("o")">@lastSeen.Value.ToString("f")</time>.</p>
+                }
+            }
+            else
+            {
+                <p>No matching messages were found for this media item.</p>
+            }
+        </div>
+    </div>
+
+    @if (!hasEntries)
+    {
+        <div class="empty-state">
+            <p>No chronology is available yet. Once this media is posted, the timeline will populate automatically.</p>
+        </div>
+    }
+    else
+    {
+        <ol class="media-chronology__timeline">
+            @foreach (var message in Model.Occurrences)
+            {
+                <li class="media-chronology__timeline-item">
+                    <article class="media-card media-card--timeline" data-message-id="@message.MessageId">
+                        <header class="media-card__header">
+                            <p class="media-card__title">
+                                <a class="media-card__user-link" asp-controller="Users" asp-action="Profile" asp-route-id="@message.UserId">
+                                    @message.DisplayName
+                                </a>
+                            </p>
+                            <span class="media-card__meta">Channel @message.ChannelId · <time datetime="@message.SentDate.ToString("o")">@message.SentDate.ToLocalTime().ToString("f")</time></span>
+                        </header>
+                        <div class="media-card__body">
+                            @if (!string.IsNullOrWhiteSpace(message.MessageText))
+                            {
+                                <p class="media-card__text">@message.MessageText</p>
+                            }
+                            else
+                            {
+                                <p class="media-card__text">No message text was captured with this post.</p>
+                            }
+                        </div>
+                    </article>
+                </li>
+            }
+        </ol>
+    }
+</section>

@@ -200,7 +200,7 @@ function renderChipList(container, tags, type) {
     });
 }
 
-function createPreviewCard(item, mediaRoot) {
+function createPreviewCard(item, mediaRoot, chronologyUrl) {
     const card = document.createElement('article');
     card.className = 'media-card';
     card.tabIndex = 0;
@@ -254,6 +254,17 @@ function createPreviewCard(item, mediaRoot) {
             tags.appendChild(chip);
         });
         body.appendChild(tags);
+    }
+
+    if (chronologyUrl && item.photoId) {
+        const actions = document.createElement('div');
+        actions.className = 'media-card__actions';
+        const link = document.createElement('a');
+        link.className = 'btn btn-outline btn-sm';
+        link.href = `${chronologyUrl}?photoId=${encodeURIComponent(item.photoId)}`;
+        link.innerHTML = '<span aria-hidden="true">🕑</span><span>View chronology</span>';
+        actions.appendChild(link);
+        body.appendChild(actions);
     }
 
     card.appendChild(body);
@@ -310,6 +321,7 @@ function initTagIndex() {
     const indexEndpoint = container.dataset.indexEndpoint;
     const detailPage = container.dataset.detailPage;
     const queryPage = container.dataset.queryPage;
+    const chronologyUrl = container.dataset.chronologyUrl || '';
     const pageSize = Number(container.dataset.previewPageSize || '6');
     const tagPageSize = Number(container.dataset.pageSize || '0');
     const userFilter = container.dataset.userId || '';
@@ -660,7 +672,7 @@ function initTagIndex() {
 
             const fragment = document.createDocumentFragment();
             items.forEach((item) => {
-                const card = createPreviewCard(item, mediaRoot);
+                const card = createPreviewCard(item, mediaRoot, chronologyUrl);
                 fragment.appendChild(card);
             });
             previewGallery.appendChild(fragment);
