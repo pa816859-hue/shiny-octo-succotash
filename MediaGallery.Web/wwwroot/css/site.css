@@ -674,6 +674,10 @@ video {
     min-height: 0;
 }
 
+.tag-card.is-filtered-out {
+    display: none !important;
+}
+
 .tag-card:hover,
 .tag-card:focus-within {
     transform: translateY(-2px);

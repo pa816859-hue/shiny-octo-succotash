@@ -524,6 +524,7 @@ function initTagIndex() {
         getCards().forEach((card) => {
             const matches = !normalizedTerm || normalizeTag(card.dataset.tag).includes(normalizedTerm);
             card.hidden = !matches;
+            card.classList.toggle('is-filtered-out', !matches);
         });
 
         updateTagCountDisplay();
