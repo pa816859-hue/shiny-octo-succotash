@@ -1,59 +1,195 @@
-@using System.Text.Json
+@model MediaGallery.Web.ViewModels.UserProfileViewModel
+@using System.Collections.Generic
+@using System.Linq
+@using MediaGallery.Web.Services.Models
 @{
-    ViewData["Title"] = "User Profile";
-    var profile = new
+    ViewData["Title"] = $"Profile · {Model.User.DisplayName}";
+
+    string? MediaUrl(string? path)
     {
-        userId = 42,
-        username = "@galleryfan",
-        displayName = "Gallery Fan",
-        bio = "Curator of the most interesting finds across the network.",
-        tags = new[]
+        if (string.IsNullOrWhiteSpace(path))
         {
-            new { label = "architecture", weight = 12 },
-            new { label = "night", weight = 7 },
-            new { label = "4k", weight = 4 }
-        },
-        media = new[]
-        {
-            new { type = "photo", title = "City lights", filePath = "photos/profile-city.jpg", width = 2048, height = 1365, isAccessible = true, addedOn = "2024-02-18T21:10:00Z", views = 1520, tags = new[] { "architecture", "night" } },
-            new { type = "video", title = "Time-lapse", filePath = "videos/profile-timelapse.mp4", width = 1920, height = 1080, isAccessible = true, addedOn = "2024-03-02T16:30:00Z", views = 980, tags = new[] { "timelapse", "4k" } },
-            new { type = "photo", title = "Private still", filePath = "photos/private-still.jpg", width = 1200, height = 800, isAccessible = false, addedOn = "2024-01-12T09:00:00Z", views = 10, tags = new[] { "private" } }
+            return null;
         }
+
+        var normalized = path.Replace("\\", "/").TrimStart('/');
+        return Url.Content($"~/media/{normalized}");
+    }
+
+    var query = Context.Request.Query;
+    var channelValue = query["channelId"].ToString();
+    var hasChannel = long.TryParse(channelValue, out var channelId);
+    var onlyMedia = string.Equals(query["mediaOnly"], "true", StringComparison.OrdinalIgnoreCase);
+    var pageSizeValue = query["pageSize"].ToString();
+    var hasPageSize = int.TryParse(pageSizeValue, out var pageSize);
+    var sortRaw = query["sortOrder"].ToString();
+    var sortOrder = Enum.TryParse<MessageSortOrder>(sortRaw, true, out var parsedSort)
+        ? parsedSort
+        : MessageSortOrder.NewestFirst;
+    var pagination = Model.Pagination;
+
+    var queryParameters = new Dictionary<string, object?>
+    {
+        ["channelId"] = hasChannel ? channelId : null,
+        ["mediaOnly"] = onlyMedia ? true : null,
+        ["sortOrder"] = sortOrder,
+        ["pageSize"] = hasPageSize ? pageSize : pagination.PageSize
     };
+
+    string BuildPageUrl(int pageNumber)
+    {
+        var parameters = new Dictionary<string, object?>
+        {
+            ["id"] = Model.User.UserId,
+            ["page"] = pageNumber
+        };
+
+        foreach (var pair in queryParameters)
+        {
+            if (pair.Value is not null)
+            {
+                parameters[pair.Key] = pair.Value;
+            }
+        }
+
+        return Url.Action("Profile", "Users", parameters) ?? string.Empty;
+    }
 }
 
 <section class="page-header">
-    <h1>@profile.displayName</h1>
-    <p class="lead">@profile.bio</p>
+    <span class="page-header__eyebrow">Operative dossier</span>
+    <h1>@Model.User.DisplayName</h1>
+    <p class="lead">Collated posts, media drops, and tag weights for the selected user.</p>
 </section>
 
-<section class="user-profile" data-profile-endpoint="/api/users/@profile.userId" data-media-root="@Url.Content("~/media/")">
-    <aside class="user-profile__sidebar">
+<section class="user-profile" data-media-root="@Url.Content("~/media/")">
+    <aside class="user-profile__panel">
         <div class="user-profile__identity">
-            <h2>@profile.username</h2>
-            <p>User ID: <strong>@profile.userId</strong></p>
+            <h2>@(Model.User.Username ?? "Anonymous")</h2>
+            <span class="user-profile__meta">User ID: <strong>@Model.User.UserId</strong></span>
+            <span class="user-profile__meta">Last seen: @Model.User.LastUpdate.ToLocalTime().ToString("g")</span>
         </div>
-        <div class="user-profile__filters" aria-label="Sort and filter media">
-            <div class="button-group">
-                <button class="btn" data-sort="recent" type="button">Most recent</button>
-                <button class="btn" data-sort="popular" type="button">Most popular</button>
-            </div>
-            <div class="chip-list" data-filter-group>
-                @foreach (var tag in profile.tags)
-                {
-                    <button class="chip" type="button" data-filter-tag="@tag.label">@tag.label (@tag.weight)</button>
-                }
-            </div>
+        <div>
+            <h3>Tags</h3>
+            @if (!Model.User.Tags.Any())
+            {
+                <p class="user-profile__meta">No weighted tags available.</p>
+            }
+            else
+            {
+                <ul class="chip-list">
+                    @foreach (var tag in Model.User.Tags.OrderByDescending(tag => tag.Weight).ThenBy(tag => tag.Tag))
+                    {
+                        <li><a class="tag-link" asp-controller="Tags" asp-action="Detail" asp-route-tag="@tag.Tag">@tag.Tag (@tag.Weight)</a></li>
+                    }
+                </ul>
+            }
         </div>
+        <form method="get" asp-action="Profile" asp-route-id="@Model.User.UserId" class="filter-form" aria-label="Filter user timeline">
+            <div class="filter-field">
+                <label for="channelId">Channel ID</label>
+                <input type="number" id="channelId" name="channelId" value="@channelValue" placeholder="Any" min="1" />
+            </div>
+            <div class="filter-field">
+                <label for="sortOrder">Sort order</label>
+                <select id="sortOrder" name="sortOrder">
+                    <option value="NewestFirst" @(sortOrder == MessageSortOrder.NewestFirst ? "selected" : null)>Newest first</option>
+                    <option value="OldestFirst" @(sortOrder == MessageSortOrder.OldestFirst ? "selected" : null)>Oldest first</option>
+                </select>
+            </div>
+            <div class="filter-field">
+                <label for="pageSize">Page size</label>
+                <input type="number" id="pageSize" name="pageSize" value="@(hasPageSize ? pageSize : pagination.PageSize)" min="1" max="100" />
+            </div>
+            <div class="filter-field">
+                <label class="switch" for="mediaOnly">
+                    <input type="checkbox" id="mediaOnly" name="mediaOnly" value="true" @(onlyMedia ? "checked" : null) />
+                    <span>Only show messages with media</span>
+                </label>
+            </div>
+            <div class="filter-actions">
+                <button class="btn btn-primary" type="submit">Apply</button>
+                <a class="btn btn-ghost" asp-action="Profile" asp-route-id="@Model.User.UserId">Reset</a>
+            </div>
+        </form>
     </aside>
 
-    <div class="user-profile__gallery" data-gallery tabindex="0" aria-label="User media gallery"></div>
-    <div class="scroll-status" data-scroll-status aria-live="polite"></div>
-</section>
+    <div class="user-profile__gallery" data-gallery tabindex="0" aria-label="User media gallery">
+        @if (!Model.Messages.Any())
+        {
+            <div class="empty-state">
+                <p>No messages matched the selected filters for this user.</p>
+            </div>
+        }
+        else
+        {
+            <div class="media-gallery-grid">
+                @foreach (var message in Model.Messages)
+                {
+                    var hasPhoto = !string.IsNullOrWhiteSpace(message.PhotoPath);
+                    var hasVideo = !string.IsNullOrWhiteSpace(message.VideoPath);
+                    var mediaPath = hasPhoto ? MediaUrl(message.PhotoPath) : MediaUrl(message.VideoPath);
+                    var hasMedia = hasPhoto || hasVideo;
+                    <article class="media-card@(hasMedia ? string.Empty : " media-card--text")" data-message-id="@message.MessageId" data-has-media="@(hasMedia.ToString().ToLowerInvariant())">
+                        <header class="media-card__header">
+                            <p class="media-card__title">Channel @message.ChannelId</p>
+                            <span class="media-card__meta">@message.SentDate.ToLocalTime().ToString("g")</span>
+                        </header>
+                        <div class="media-card__body">
+                            @if (hasPhoto && mediaPath is not null)
+                            {
+                                <div class="media-card__media" data-lg-item>
+                                    <a href="@mediaPath" data-sub-html="<p>@(message.MessageText ?? string.Empty)</p>">
+                                        <img src="@mediaPath" alt="Photo shared by @Model.User.DisplayName">
+                                    </a>
+                                </div>
+                            }
+                            else if (hasVideo && mediaPath is not null)
+                            {
+                                <div class="media-card__media video-wrapper">
+                                    <video class="media-card__video" controls playsinline>
+                                        <source src="@mediaPath" type="video/mp4" />
+                                    </video>
+                                </div>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(message.MessageText))
+                            {
+                                <p class="media-card__text">@message.MessageText</p>
+                            }
+                        </div>
+                    </article>
+                }
+            </div>
+        }
 
-<script type="application/json" id="user-profile-data">
-    @Html.Raw(JsonSerializer.Serialize(profile))
-</script>
+        <div class="scroll-status">
+            Showing page @pagination.PageNumber with up to @pagination.PageSize messages.
+        </div>
+
+        <nav class="pagination" aria-label="User message pagination">
+            <span class="pagination__info">Page @pagination.PageNumber</span>
+            <div class="pagination__actions">
+                @if (pagination.HasPreviousPage)
+                {
+                    <a class="btn btn-outline" href="@BuildPageUrl(pagination.PageNumber - 1)">Previous</a>
+                }
+                else
+                {
+                    <button class="btn btn-outline" type="button" disabled>Previous</button>
+                }
+
+                @if (pagination.HasNextPage)
+                {
+                    <a class="btn btn-outline" href="@BuildPageUrl(pagination.PageNumber + 1)">Next</a>
+                }
+                else
+                {
+                    <button class="btn btn-outline" type="button" disabled>Next</button>
+                }
+            </div>
+        </nav>
+    </div>
+</section>
 
 @section Scripts {
     <script type="module" src="~/js/userProfile.js" asp-append-version="true"></script>

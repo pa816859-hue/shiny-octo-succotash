@@ -1,41 +1,182 @@
-@using System.Text.Json
+@model MediaGallery.Web.ViewModels.RecentMessagesViewModel
+@using System.Collections.Generic
+@using System.Linq
+@using MediaGallery.Web.Services.Models
 @{
-    ViewData["Title"] = "Recent Messages";
-    var sampleMessages = new[]
+    ViewData["Title"] = "Recent messages";
+
+    string? MediaUrl(string? path)
     {
-        new { messageId = 101, user = "Demo User", text = "Panoramic skyline from the latest drop.", mediaType = "photo", filePath = "photos/sample1.jpg", width = 1600, height = 900, isAccessible = true },
-        new { messageId = 102, user = "Another User", text = "Short teaser clip", mediaType = "video", filePath = "videos/teaser.mp4", width = 1920, height = 1080, isAccessible = true },
-        new { messageId = 103, user = "Restricted User", text = "This item should be hidden", mediaType = "photo", filePath = "photos/private.jpg", width = 1024, height = 768, isAccessible = false }
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return null;
+        }
+
+        var normalized = path.Replace("\\", "/").TrimStart('/');
+        return Url.Content($"~/media/{normalized}");
+    }
+
+    var query = Context.Request.Query;
+    var channelValue = query["channelId"].ToString();
+    var userValue = query["userId"].ToString();
+    var pageSizeValue = query["pageSize"].ToString();
+    var hasChannel = long.TryParse(channelValue, out var channelId);
+    var hasUser = long.TryParse(userValue, out var userId);
+    var hasPageSize = int.TryParse(pageSizeValue, out var pageSize);
+    var onlyMedia = string.Equals(query["mediaOnly"], "true", StringComparison.OrdinalIgnoreCase);
+    var sortRaw = query["sortOrder"].ToString();
+    var sortOrder = Enum.TryParse<MessageSortOrder>(sortRaw, true, out var parsedSort)
+        ? parsedSort
+        : MessageSortOrder.NewestFirst;
+
+    var pagination = Model.Pagination;
+
+    var queryParameters = new Dictionary<string, object?>
+    {
+        ["channelId"] = hasChannel ? channelId : null,
+        ["userId"] = hasUser ? userId : null,
+        ["mediaOnly"] = onlyMedia ? true : null,
+        ["sortOrder"] = sortOrder,
+        ["pageSize"] = hasPageSize ? pageSize : pagination.PageSize
     };
+
+    string BuildPageUrl(int pageNumber)
+    {
+        var parameters = new Dictionary<string, object?>(queryParameters)
+        {
+            ["page"] = pageNumber
+        };
+
+        return Url.Action("Recent", "Messages", parameters) ?? string.Empty;
+    }
 }
 
 <section class="page-header">
+    <span class="page-header__eyebrow">Live feed</span>
     <h1>@ViewData["Title"]</h1>
-    <p class="lead">Scroll to browse new uploads. Launch the slideshow to lean back and enjoy.</p>
+    <p class="lead">Browse the chronologically sorted messenger stream. Filter by identifiers or jump into slideshow mode.</p>
 </section>
 
-<section class="recent-messages" data-feed-endpoint="/api/messages/recent" data-media-root="@Url.Content("~/media/")">
+<form method="get" class="filter-form" aria-label="Filter recent messages">
+    <div class="filter-field">
+        <label for="channelId">Channel ID</label>
+        <input type="number" id="channelId" name="channelId" value="@channelValue" placeholder="Any" min="1" />
+    </div>
+    <div class="filter-field">
+        <label for="userId">User ID</label>
+        <input type="number" id="userId" name="userId" value="@userValue" placeholder="Any" min="1" />
+    </div>
+    <div class="filter-field">
+        <label for="sortOrder">Sort order</label>
+        <select id="sortOrder" name="sortOrder">
+            <option value="NewestFirst" @(sortOrder == MessageSortOrder.NewestFirst ? "selected" : null)>Newest first</option>
+            <option value="OldestFirst" @(sortOrder == MessageSortOrder.OldestFirst ? "selected" : null)>Oldest first</option>
+        </select>
+    </div>
+    <div class="filter-field">
+        <label for="pageSize">Page size</label>
+        <input type="number" id="pageSize" name="pageSize" value="@(hasPageSize ? pageSize : pagination.PageSize)" min="1" max="100" />
+    </div>
+    <div class="filter-field">
+        <label class="switch" for="mediaOnly">
+            <input type="checkbox" id="mediaOnly" name="mediaOnly" value="true" @(onlyMedia ? "checked" : null) />
+            <span>Only messages with media attachments</span>
+        </label>
+    </div>
+    <div class="filter-actions">
+        <button class="btn btn-primary" type="submit">Apply filters</button>
+        <a class="btn btn-ghost" asp-controller="Messages" asp-action="Recent">Reset</a>
+    </div>
+</form>
+
+<section class="recent-messages" data-media-root="@Url.Content("~/media/")">
     <div class="toolbar" role="toolbar" aria-label="Recent message controls">
-        <div class="button-group">
-            <button class="btn" data-action="toggle-layout" type="button">Toggle layout</button>
-            <button class="btn" data-action="start-slideshow" type="button">Start slideshow</button>
+        <div class="toolbar__group">
+            <button class="btn btn-outline" data-action="toggle-layout" type="button">Toggle layout</button>
+            <button class="btn btn-outline" data-action="start-slideshow" type="button">Start slideshow</button>
         </div>
-        <div class="button-group">
+        <div class="toolbar__group">
             <label class="switch" for="recent-only-media">
-                <input id="recent-only-media" type="checkbox" data-filter="onlyMedia" />
-                <span>Only show items with media</span>
+                <input id="recent-only-media" type="checkbox" data-filter="onlyMedia" @(onlyMedia ? "checked" : null) />
+                <span>Client-side media only</span>
             </label>
         </div>
     </div>
 
-    <div class="media-gallery-grid" data-gallery data-scroll-target tabindex="0" aria-live="polite"></div>
-    <div class="scroll-status" data-scroll-status aria-live="polite"></div>
-    <div class="scroll-sentinel" data-scroll-sentinel></div>
-</section>
+    @if (!Model.Messages.Any())
+    {
+        <div class="empty-state">
+            <p>No messages matched your filters. Try broadening the search scope.</p>
+        </div>
+    }
+    else
+    {
+        <div class="media-gallery-grid" data-gallery tabindex="0" aria-live="polite">
+            @foreach (var message in Model.Messages)
+            {
+                var hasPhoto = !string.IsNullOrWhiteSpace(message.PhotoPath);
+                var hasVideo = !string.IsNullOrWhiteSpace(message.VideoPath);
+                var mediaPath = hasPhoto ? MediaUrl(message.PhotoPath) : MediaUrl(message.VideoPath);
+                var hasMedia = hasPhoto || hasVideo;
+                <article class="media-card@(hasMedia ? string.Empty : " media-card--text")" data-message-id="@message.MessageId" data-has-media="@(hasMedia.ToString().ToLowerInvariant())">
+                    <header class="media-card__header">
+                        <p class="media-card__title">@message.DisplayName</p>
+                        <span class="media-card__meta">Channel @message.ChannelId · @message.SentDate.ToLocalTime().ToString("g")</span>
+                    </header>
+                    <div class="media-card__body">
+                        @if (hasPhoto && mediaPath is not null)
+                        {
+                            <div class="media-card__media" data-lg-item>
+                                <a href="@mediaPath" data-sub-html="<p>@(message.MessageText ?? string.Empty)</p>">
+                                    <img src="@mediaPath" alt="Photo from @message.DisplayName">
+                                </a>
+                            </div>
+                        }
+                        else if (hasVideo && mediaPath is not null)
+                        {
+                            <div class="media-card__media video-wrapper">
+                                <video class="media-card__video" controls playsinline>
+                                    <source src="@mediaPath" type="video/mp4" />
+                                </video>
+                            </div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(message.MessageText))
+                        {
+                            <p class="media-card__text">@message.MessageText</p>
+                        }
+                    </div>
+                </article>
+            }
+        </div>
+    }
 
-<script type="application/json" id="recent-messages-data">
-    @Html.Raw(JsonSerializer.Serialize(sampleMessages))
-</script>
+    <div class="scroll-status" data-scroll-status aria-live="polite">
+        Showing page @pagination.PageNumber with up to @pagination.PageSize items per page.
+    </div>
+
+    <nav class="pagination" aria-label="Message pagination">
+        <span class="pagination__info">Page @pagination.PageNumber</span>
+        <div class="pagination__actions">
+            @if (pagination.HasPreviousPage)
+            {
+                <a class="btn btn-outline" href="@BuildPageUrl(pagination.PageNumber - 1)">Previous</a>
+            }
+            else
+            {
+                <button class="btn btn-outline" type="button" disabled>Previous</button>
+            }
+
+            @if (pagination.HasNextPage)
+            {
+                <a class="btn btn-outline" href="@BuildPageUrl(pagination.PageNumber + 1)">Next</a>
+            }
+            else
+            {
+                <button class="btn btn-outline" type="button" disabled>Next</button>
+            }
+        </div>
+    </nav>
+</section>
 
 @section Scripts {
     <script type="module" src="~/js/recentMessages.js" asp-append-version="true"></script>

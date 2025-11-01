@@ -1,34 +1,60 @@
+@{
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
+    var currentAction = ViewContext.RouteData.Values["action"]?.ToString() ?? string.Empty;
+    string NavLinkClass(string controller, string action)
+        => string.Equals(currentController, controller, StringComparison.OrdinalIgnoreCase)
+           && (string.IsNullOrEmpty(action) || string.Equals(currentAction, action, StringComparison.OrdinalIgnoreCase))
+            ? "nav-link is-active"
+            : "nav-link";
+}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - MediaGallery</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@2.7.1/css/lightgallery-bundle.min.css" integrity="sha384-e2zuYDhBUmEGmDqsJ0OmxLKkMl2Hg+yaGoQUfx/kO5+VC1toDJPugQwnzkXDqRoC" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/plyr@3.7.8/dist/plyr.css" integrity="sha384-EMu93gX5MIGiBMCkMR/8WFrvx1vhx4kY+5aoBT+oyZ+cW4uRdmNf54juOSeS5h5C" crossorigin="anonymous">
 </head>
-<body data-media-root='@Url.Content("~/media/")'>
-    <header>
-        <nav class="navbar">
-            <div class="container">
-                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">MediaGallery</a>
-                <ul class="nav">
-                    <li class="nav-item"><a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">Home</a></li>
-                    <li class="nav-item"><a class="nav-link" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a></li>
+<body class="app-shell" data-media-root='@Url.Content("~/media/")'>
+    <header class="app-shell__header">
+        <div class="app-shell__inner">
+            <nav class="app-nav" aria-label="Primary">
+                <a class="app-nav__brand" asp-area="" asp-controller="Home" asp-action="Index">
+                    <span class="app-nav__brand-mark" aria-hidden="true"></span>
+                    <span class="app-nav__brand-text">MediaGallery</span>
+                </a>
+                <ul class="app-nav__links">
+                    <li><a class="@NavLinkClass("Home", "Index")" asp-area="" asp-controller="Home" asp-action="Index">Home</a></li>
+                    <li><a class="@NavLinkClass("Messages", "Recent")" asp-area="" asp-controller="Messages" asp-action="Recent">Messages</a></li>
+                    <li><a class="@NavLinkClass("Tags", "Index")" asp-area="" asp-controller="Tags" asp-action="Index">Tags</a></li>
+                    <li><a class="@NavLinkClass("Home", "Privacy")" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a></li>
                 </ul>
-            </div>
-        </nav>
+                <div class="app-nav__actions">
+                    <a class="btn btn-ghost" asp-controller="Messages" asp-action="Recent">Live feed</a>
+                    <a class="btn btn-primary" asp-controller="Tags" asp-action="Index">Explore library</a>
+                </div>
+            </nav>
+        </div>
     </header>
-    <div class="container">
-        <main role="main" class="pb-3">
-            @RenderBody()
-        </main>
+    <div class="app-shell__body">
+        <div class="app-shell__inner">
+            <main class="app-main" role="main">
+                @RenderBody()
+            </main>
+        </div>
     </div>
 
-    <footer class="footer">
-        <div class="container">
-            &copy; @DateTime.Now.Year - MediaGallery
+    <footer class="app-shell__footer">
+        <div class="app-shell__inner">
+            <div class="app-footer">
+                <p>&copy; @DateTime.Now.Year MediaGallery. Crafted for rapid incident response teams.</p>
+                <p class="app-footer__meta">Media root: <code>@Url.Content("~/media/")</code></p>
+            </div>
         </div>
     </footer>
 

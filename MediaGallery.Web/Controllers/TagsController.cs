@@ -69,7 +69,7 @@ public class TagsController : Controller
 
     [HttpGet]
     public async Task<IActionResult> Detail(
-        [FromRoute] string tag,
+        string? tag,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = PaginationHelper.DefaultPageSizeLimit,
         CancellationToken cancellationToken = default)
@@ -79,13 +79,14 @@ public class TagsController : Controller
             return BadRequest(new { error = "Tag must be provided." });
         }
 
+        var normalizedTag = tag.Trim();
         var normalizedPage = page < 1 ? 1 : page;
         var normalizedPageSize = PaginationHelper.ClampPageSize(pageSize);
 
         try
         {
             var viewModel = await _tagService
-                .GetTagDetailAsync(tag, normalizedPage, normalizedPageSize, cancellationToken)
+                .GetTagDetailAsync(normalizedTag, normalizedPage, normalizedPageSize, cancellationToken)
                 .ConfigureAwait(false);
 
             return View(viewModel);
@@ -98,7 +99,7 @@ public class TagsController : Controller
 
     [HttpGet]
     public async Task<IActionResult> DetailData(
-        [FromRoute] string tag,
+        string? tag,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = PaginationHelper.DefaultPageSizeLimit,
         CancellationToken cancellationToken = default)
@@ -113,12 +114,13 @@ public class TagsController : Controller
             return BadRequest(new { error = errorMessage });
         }
 
+        var normalizedTag = tag.Trim();
         var normalizedPageSize = PaginationHelper.ClampPageSize(pageSize);
 
         try
         {
             var viewModel = await _tagService
-                .GetTagDetailAsync(tag, page, normalizedPageSize, cancellationToken)
+                .GetTagDetailAsync(normalizedTag, page, normalizedPageSize, cancellationToken)
                 .ConfigureAwait(false);
 
             var photos = new PagedResult<TaggedPhoto>(viewModel.Photos, viewModel.Pagination);
