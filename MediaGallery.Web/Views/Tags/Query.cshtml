@@ -86,51 +86,61 @@
     }
     else
     {
-        <div class="media-gallery-grid" data-gallery aria-label="Media for @label">
-            @foreach (var photo in photos)
-            {
-                var mediaPath = MediaUrl(photo.FilePath);
-                <article class="media-card" data-has-media="true">
-                    <header class="media-card__header">
-                        <p class="media-card__title">
-                            @if (photo.UserId.HasValue)
-                            {
-                                <a class="media-card__user-link" asp-controller="Users" asp-action="Profile" asp-route-id="@photo.UserId.Value">
-                                    @photo.DisplayName
-                                </a>
-                            }
-                            else
-                            {
-                                @photo.DisplayName
-                            }
-                        </p>
-                        <span class="media-card__meta">@photo.AddedOn.ToLocalTime().ToString("g")</span>
-                    </header>
-                    <div class="media-card__body">
-                        @if (mediaPath is not null)
-                        {
-                            <div class="media-card__media" data-lg-item>
-                                <a href="@mediaPath" data-sub-html="<p>@(photo.MessageText ?? string.Empty)</p>">
-                                    <img src="@mediaPath" alt="Photo that matches @label">
-                                </a>
-                            </div>
-                        }
-                        @if (!string.IsNullOrWhiteSpace(photo.MessageText))
-                        {
-                            <p class="media-card__text">@photo.MessageText</p>
-                        }
-                        @if (photo.Tags.Any())
-                        {
-                            <div class="media-card__tags">
-                                @foreach (var tag in photo.Tags)
+        <div class="media-carousel" data-gallery data-carousel aria-label="Media for @label">
+            <button class="media-carousel__control media-carousel__control--prev" type="button" data-carousel-prev aria-label="Previous result photo">
+                <span aria-hidden="true">&#10094;</span>
+            </button>
+            <div class="media-carousel__viewport" data-carousel-viewport tabindex="0">
+                <div class="media-carousel__track" data-carousel-track>
+                    @foreach (var photo in photos)
+                    {
+                        var mediaPath = MediaUrl(photo.FilePath);
+                        <article class="media-card" data-has-media="true">
+                            <header class="media-card__header">
+                                <p class="media-card__title">
+                                    @if (photo.UserId.HasValue)
+                                    {
+                                        <a class="media-card__user-link" asp-controller="Users" asp-action="Profile" asp-route-id="@photo.UserId.Value">
+                                            @photo.DisplayName
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        @photo.DisplayName
+                                    }
+                                </p>
+                                <span class="media-card__meta">@photo.AddedOn.ToLocalTime().ToString("g")</span>
+                            </header>
+                            <div class="media-card__body">
+                                @if (mediaPath is not null)
                                 {
-                                    <span>@tag.Tag (@tag.Score.ToString("P1"))</span>
+                                    <div class="media-card__media" data-lg-item>
+                                        <a href="@mediaPath" data-sub-html="<p>@(photo.MessageText ?? string.Empty)</p>">
+                                            <img src="@mediaPath" alt="Photo that matches @label">
+                                        </a>
+                                    </div>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(photo.MessageText))
+                                {
+                                    <p class="media-card__text">@photo.MessageText</p>
+                                }
+                                @if (photo.Tags.Any())
+                                {
+                                    <div class="media-card__tags">
+                                        @foreach (var tag in photo.Tags)
+                                        {
+                                            <span>@tag.Tag (@tag.Score.ToString("P1"))</span>
+                                        }
+                                    </div>
                                 }
                             </div>
-                        }
-                    </div>
-                </article>
-            }
+                        </article>
+                    }
+                </div>
+            </div>
+            <button class="media-carousel__control media-carousel__control--next" type="button" data-carousel-next aria-label="Next result photo">
+                <span aria-hidden="true">&#10095;</span>
+            </button>
         </div>
     }
 

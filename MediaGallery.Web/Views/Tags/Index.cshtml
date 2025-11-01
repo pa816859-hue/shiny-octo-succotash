@@ -124,7 +124,17 @@
         </section>
 
         <h2 class="tag-browser__preview-title" data-preview-title>Preview</h2>
-        <div class="media-gallery-grid" data-preview-gallery></div>
+        <div class="media-carousel media-carousel--preview" data-carousel>
+            <button class="media-carousel__control media-carousel__control--prev" type="button" data-carousel-prev aria-label="Previous preview item">
+                <span aria-hidden="true">&#10094;</span>
+            </button>
+            <div class="media-carousel__viewport" data-carousel-viewport tabindex="0">
+                <div class="media-carousel__track" data-carousel-track data-preview-gallery data-gallery></div>
+            </div>
+            <button class="media-carousel__control media-carousel__control--next" type="button" data-carousel-next aria-label="Next preview item">
+                <span aria-hidden="true">&#10095;</span>
+            </button>
+        </div>
         <div class="scroll-status" data-scroll-status aria-live="polite">Add tags to the query or preview a tag to see media here.</div>
     </aside>
 </section>

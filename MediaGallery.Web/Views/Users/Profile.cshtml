@@ -176,33 +176,43 @@
             }
             else
             {
-                <div class="media-gallery-grid" data-gallery tabindex="0" aria-label="User photo gallery">
-                    @foreach (var message in photoMessages)
-                    {
-                        var mediaPath = MediaUrl(message.PhotoPath);
-                        if (mediaPath is null)
-                        {
-                            continue;
-                        }
-
-                        <article class="media-card" data-message-id="@message.MessageId" data-has-media="true" tabindex="0">
-                            <header class="media-card__header">
-                                <p class="media-card__title">Channel @message.ChannelId</p>
-                                <span class="media-card__meta">@message.SentDate.ToLocalTime().ToString("g")</span>
-                            </header>
-                            <div class="media-card__body">
-                                <div class="media-card__media" data-lg-item>
-                                    <a href="@mediaPath" data-sub-html="<p>@(message.MessageText ?? string.Empty)</p>">
-                                        <img src="@mediaPath" alt="Photo shared by @Model.User.DisplayName">
-                                    </a>
-                                </div>
-                                @if (!string.IsNullOrWhiteSpace(message.MessageText))
+                <div class="media-carousel" data-gallery data-carousel aria-label="User photo gallery">
+                    <button class="media-carousel__control media-carousel__control--prev" type="button" data-carousel-prev aria-label="Previous photo">
+                        <span aria-hidden="true">&#10094;</span>
+                    </button>
+                    <div class="media-carousel__viewport" data-carousel-viewport tabindex="0">
+                        <div class="media-carousel__track" data-carousel-track>
+                            @foreach (var message in photoMessages)
+                            {
+                                var mediaPath = MediaUrl(message.PhotoPath);
+                                if (mediaPath is null)
                                 {
-                                    <p class="media-card__text">@message.MessageText</p>
+                                    continue;
                                 }
-                            </div>
-                        </article>
-                    }
+
+                                <article class="media-card" data-message-id="@message.MessageId" data-has-media="true" tabindex="0">
+                                    <header class="media-card__header">
+                                        <p class="media-card__title">Channel @message.ChannelId</p>
+                                        <span class="media-card__meta">@message.SentDate.ToLocalTime().ToString("g")</span>
+                                    </header>
+                                    <div class="media-card__body">
+                                        <div class="media-card__media" data-lg-item>
+                                            <a href="@mediaPath" data-sub-html="<p>@(message.MessageText ?? string.Empty)</p>">
+                                                <img src="@mediaPath" alt="Photo shared by @Model.User.DisplayName">
+                                            </a>
+                                        </div>
+                                        @if (!string.IsNullOrWhiteSpace(message.MessageText))
+                                        {
+                                            <p class="media-card__text">@message.MessageText</p>
+                                        }
+                                    </div>
+                                </article>
+                            }
+                        </div>
+                    </div>
+                    <button class="media-carousel__control media-carousel__control--next" type="button" data-carousel-next aria-label="Next photo">
+                        <span aria-hidden="true">&#10095;</span>
+                    </button>
                 </div>
             }
         </section>
