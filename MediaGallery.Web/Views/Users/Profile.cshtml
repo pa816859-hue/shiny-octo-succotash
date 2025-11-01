@@ -1,6 +1,7 @@
 @model MediaGallery.Web.ViewModels.UserProfileViewModel
 @using System.Collections.Generic
 @using System.Linq
+@using MediaGallery.Web.Controllers
 @using MediaGallery.Web.Services.Models
 @{
     ViewData["Title"] = $"Profile · {Model.User.DisplayName}";
@@ -116,7 +117,7 @@
             </div>
             <div class="filter-field">
                 <label for="pageSize">Page size</label>
-                <input type="number" id="pageSize" name="pageSize" value="@(hasPageSize ? pageSize : pagination.PageSize)" min="1" max="100" />
+                <input type="number" id="pageSize" name="pageSize" value="@(hasPageSize ? pageSize : pagination.PageSize)" min="1" max="@PaginationHelper.MaxPageSizeLimit" />
             </div>
             <div class="filter-field">
                 <label class="switch" for="mediaOnly">

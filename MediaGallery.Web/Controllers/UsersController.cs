@@ -22,7 +22,7 @@ public class UsersController : Controller
     public async Task<IActionResult> Profile(
         [FromRoute] long id,
         [FromQuery] int page = 1,
-        [FromQuery] int pageSize = PaginationHelper.DefaultPageSizeLimit,
+        [FromQuery] int pageSize = PaginationHelper.DefaultPageSize,
         [FromQuery] long? channelId = null,
         [FromQuery] bool mediaOnly = false,
         [FromQuery] MessageSortOrder sortOrder = MessageSortOrder.NewestFirst,
@@ -54,7 +54,7 @@ public class UsersController : Controller
     public async Task<IActionResult> ProfileData(
         [FromRoute] long id,
         [FromQuery] int page = 1,
-        [FromQuery] int pageSize = PaginationHelper.DefaultPageSizeLimit,
+        [FromQuery] int pageSize = PaginationHelper.DefaultPageSize,
         [FromQuery] long? channelId = null,
         [FromQuery] bool mediaOnly = false,
         [FromQuery] MessageSortOrder sortOrder = MessageSortOrder.NewestFirst,
