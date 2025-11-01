@@ -141,6 +141,14 @@ public class VideoService : IVideoService
         var normalizedPath = relativePath.TrimStart('/', '\\');
         var sourceUrl = "/media/" + normalizedPath.Replace('\\', '/');
         var isLiked = likedIds.Contains(dto.VideoId);
-        return new VideoPlaybackModel(dto.VideoId, sourceUrl, dto.AddedOn, isLiked);
+        var contributors = dto.Contributors
+            .Select(contributor => new VideoContributor(
+                contributor.UserId,
+                contributor.Username,
+                contributor.FirstName,
+                contributor.LastName))
+            .ToList();
+
+        return new VideoPlaybackModel(dto.VideoId, sourceUrl, dto.AddedOn, isLiked, contributors);
     }
 }

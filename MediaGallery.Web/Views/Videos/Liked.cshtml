@@ -41,6 +41,21 @@
                     <div class="video-liked__meta">
                         <span class="video-liked__id">Video #@video.VideoId</span>
                         <span class="video-liked__timestamp">Added @video.AddedOn.ToString("g")</span>
+                        @if (video.Contributors.Count > 0)
+                        {
+                            <div class="video-liked__contributors">
+                                <span class="video-liked__contributors-label">Posted by</span>
+                                <div class="video-liked__contributors-list">
+                                    @foreach (var contributor in video.Contributors)
+                                    {
+                                        <a class="btn btn-outline btn-sm video-liked__contributor" asp-controller="Users" asp-action="Profile" asp-route-id="@contributor.UserId">
+                                            <span aria-hidden="true">👤</span>
+                                            <span>@contributor.DisplayName</span>
+                                        </a>
+                                    }
+                                </div>
+                            </div>
+                        }
                         <div class="video-liked__item-actions">
                             <button type="button" class="btn btn-ghost btn-sm" data-role="unlike-button">
                                 <span aria-hidden="true">💔</span>

@@ -1260,6 +1260,31 @@ video {
     color: var(--text-muted);
 }
 
+.video-liked__contributors {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.video-liked__contributors-label {
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(148, 163, 184, 0.75);
+}
+
+.video-liked__contributors-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.video-liked__contributor {
+    display: inline-flex;
+    gap: 0.35rem;
+    align-items: center;
+}
+
 .video-liked__id {
     font-weight: 600;
     color: var(--text-strong);

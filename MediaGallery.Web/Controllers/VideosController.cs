@@ -86,7 +86,11 @@ public class VideosController : Controller
             return null;
         }
 
-        return new VideoPlaybackViewModel(model.VideoId, model.SourceUrl, model.AddedOn, model.IsLiked);
+        var contributors = model.Contributors
+            .Select(contributor => new VideoContributorViewModel(contributor.UserId, contributor.DisplayName))
+            .ToList();
+
+        return new VideoPlaybackViewModel(model.VideoId, model.SourceUrl, model.AddedOn, model.IsLiked, contributors);
     }
 
     private static object CreateResponse(VideoPlaybackViewModel? model)
@@ -104,7 +108,13 @@ public class VideosController : Controller
                 videoId = model.VideoId,
                 sourceUrl = model.SourceUrl,
                 addedOn = model.AddedOn.ToString("O"),
-                isLiked = model.IsLiked
+                isLiked = model.IsLiked,
+                contributors = model.Contributors
+                    .Select(contributor => new
+                    {
+                        userId = contributor.UserId,
+                        displayName = contributor.DisplayName
+                    })
             }
         };
     }
