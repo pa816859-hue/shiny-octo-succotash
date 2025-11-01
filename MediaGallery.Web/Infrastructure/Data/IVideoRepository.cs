@@ -7,7 +7,7 @@ namespace MediaGallery.Web.Infrastructure.Data;
 
 public interface IVideoRepository
 {
-    Task<IReadOnlyList<VideoDto>> GetLatestVideosAsync(int pageSize, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<VideoDto>> GetRandomVideosAsync(int pageSize, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<VideoDto>> GetVideosByIdsAsync(IEnumerable<long> videoIds, CancellationToken cancellationToken = default);
 }

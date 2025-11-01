@@ -14,6 +14,7 @@ namespace MediaGallery.Web.Services;
 public class VideoService : IVideoService
 {
     private const int DefaultBatchSize = 50;
+    private const int MaxRandomFetchAttempts = 5;
 
     private readonly IVideoRepository _videoRepository;
     private readonly IVideoStateStore _stateStore;
@@ -40,33 +41,52 @@ public class VideoService : IVideoService
         var watchedIds = await _stateStore.GetWatchedVideoIdsAsync(cancellationToken).ConfigureAwait(false);
         var likedIds = await _stateStore.GetLikedVideoIdsAsync(cancellationToken).ConfigureAwait(false);
 
-        var latestVideos = await _videoRepository
-            .GetLatestVideosAsync(DefaultBatchSize, cancellationToken)
-            .ConfigureAwait(false);
+        var attemptedVideoIds = new HashSet<long>();
 
-        var candidates = latestVideos
-            .Select(video => CreatePlaybackModel(video, mediaRoot, likedIds))
-            .Where(model => model is not null && !watchedIds.Contains(model.VideoId))
-            .Select(model => model!)
-            .ToList();
-
-        if (candidates.Count == 0)
+        for (var attempt = 0; attempt < MaxRandomFetchAttempts; attempt++)
         {
-            candidates = latestVideos
-                .Select(video => CreatePlaybackModel(video, mediaRoot, likedIds))
-                .Where(model => model is not null)
-                .Select(model => model!)
-                .ToList();
+            var randomVideos = await _videoRepository
+                .GetRandomVideosAsync(DefaultBatchSize, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (randomVideos.Count == 0)
+            {
+                continue;
+            }
+
+            var candidates = new List<VideoPlaybackModel>(randomVideos.Count);
+            foreach (var video in randomVideos)
+            {
+                if (!attemptedVideoIds.Add(video.VideoId))
+                {
+                    continue;
+                }
+
+                var model = CreatePlaybackModel(video, mediaRoot, likedIds);
+                if (model is null)
+                {
+                    continue;
+                }
+
+                candidates.Add(model);
+            }
+
+            if (candidates.Count == 0)
+            {
+                continue;
+            }
+
+            var unwatched = candidates.FirstOrDefault(model => !watchedIds.Contains(model.VideoId));
+            if (unwatched is null)
+            {
+                continue;
+            }
+
+            await _stateStore.AddWatchedVideoIdAsync(unwatched.VideoId, cancellationToken).ConfigureAwait(false);
+            return unwatched;
         }
 
-        if (candidates.Count == 0)
-        {
-            return null;
-        }
-
-        var selected = candidates[Random.Shared.Next(candidates.Count)];
-        await _stateStore.AddWatchedVideoIdAsync(selected.VideoId, cancellationToken).ConfigureAwait(false);
-        return selected;
+        return null;
     }
 
     public async Task<VideoPlaybackModel?> SkipAsync(long videoId, CancellationToken cancellationToken = default)

@@ -13,21 +13,21 @@ namespace MediaGallery.Web.Infrastructure.Data;
 
 public class VideoRepository : SqlRepositoryBase, IVideoRepository
 {
-    private const string LatestVideosQuery = @"SELECT TOP (@PageSize) VideoID, FilePath, AddedOn
+    private const string RandomVideosQuery = @"SELECT TOP (@PageSize) VideoID, FilePath, AddedOn
 FROM dbo.Videos
-ORDER BY AddedOn DESC, VideoID DESC;";
+ORDER BY NEWID();";
 
     public VideoRepository(IDbConnectionFactory connectionFactory, ISqlCommandExecutor commandExecutor)
         : base(connectionFactory, commandExecutor)
     {
     }
 
-    public async Task<IReadOnlyList<VideoDto>> GetLatestVideosAsync(int pageSize, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<VideoDto>> GetRandomVideosAsync(int pageSize, CancellationToken cancellationToken = default)
     {
         var normalizedPageSize = NormalizePageSize(pageSize);
 
         using var connection = CreateConnection();
-        using var command = new SqlCommand(LatestVideosQuery, connection)
+        using var command = new SqlCommand(RandomVideosQuery, connection)
         {
             CommandType = CommandType.Text
         };
