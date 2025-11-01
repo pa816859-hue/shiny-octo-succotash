@@ -63,7 +63,11 @@
                     var mediaPath = hasPhoto ? MediaUrl(message.PhotoPath) : MediaUrl(message.VideoPath);
                     <article class="media-card" data-has-media="true">
                         <header class="media-card__header">
-                            <p class="media-card__title">@message.DisplayName</p>
+                            <p class="media-card__title">
+                                <a class="media-card__user-link" asp-controller="Users" asp-action="Profile" asp-route-id="@message.UserId">
+                                    @message.DisplayName
+                                </a>
+                            </p>
                             <span class="media-card__meta">@message.SentDate.ToLocalTime().ToString("g")</span>
                         </header>
                         <div class="media-card__body">

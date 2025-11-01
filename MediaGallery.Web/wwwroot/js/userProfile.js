@@ -54,13 +54,12 @@ function initUserProfile() {
         return;
     }
 
-    const galleryHost = container.querySelector('[data-gallery]');
-    if (!galleryHost) {
-        return;
-    }
+    const galleryHosts = Array.from(container.querySelectorAll('[data-gallery]'));
+    galleryHosts.forEach((host) => {
+        ensureGallery(host);
+    });
 
-    ensureGallery(galleryHost);
-    galleryHost.querySelectorAll('video').forEach(initPlyr);
+    container.querySelectorAll('video').forEach(initPlyr);
 
     container.addEventListener('keydown', (event) => {
         if (!['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(event.key)) {
