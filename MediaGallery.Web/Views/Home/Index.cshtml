@@ -1,8 +1,136 @@
+@model MediaGallery.Web.ViewModels.HomeDashboardViewModel
+@using System.Linq
 @{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "Mission control";
+
+    string? MediaUrl(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return null;
+        }
+
+        var normalized = path.Replace("\\", "/").TrimStart('/');
+        return Url.Content($"~/media/{normalized}");
+    }
+
+    var featuredMessages = Model.RecentMedia.Messages
+        .Where(message => !string.IsNullOrWhiteSpace(message.PhotoPath) || !string.IsNullOrWhiteSpace(message.VideoPath))
+        .Take(6)
+        .ToList();
+
+    var generatedAt = Model.GeneratedOn.ToLocalTime();
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Build your media gallery starting from this baseline ASP.NET Core MVC project.</p>
-</div>
+<section class="dashboard-hero">
+    <div class="dashboard-hero__content">
+        <span class="page-header__eyebrow">Live intelligence</span>
+        <h1>Monitor the gallery like a dark-mode messenger</h1>
+        <p class="lead">
+            Review the latest intercepted media, filter by channel or user, and spotlight trending tags without leaving the dark-themed operations room.
+        </p>
+        <div class="dashboard-hero__meter">
+            <div class="dashboard-hero__stat">
+                <strong>@Model.RecentMedia.Messages.Count</strong>
+                <span>Items processed in the last scan</span>
+            </div>
+            <div class="dashboard-hero__stat">
+                <strong>@Model.TagSummaries.Tags.Count</strong>
+                <span>Active visual intelligence tags</span>
+            </div>
+        </div>
+        <div class="section-actions">
+            <a class="btn btn-primary" asp-controller="Messages" asp-action="Recent">Browse live feed</a>
+            <a class="btn btn-ghost" asp-controller="Tags" asp-action="Index">Explore tag atlas</a>
+        </div>
+        <small class="app-footer__meta">Dashboard refreshed @generatedAt.ToString("g")</small>
+    </div>
+    <div class="dashboard-hero__preview">
+        <h2>Recent media snapshots</h2>
+        @if (featuredMessages.Count == 0)
+        {
+            <div class="empty-state">
+                <p>No media attachments were returned by the latest scan. Check again after new activity arrives.</p>
+            </div>
+        }
+        else
+        {
+            <div class="media-gallery-grid" data-gallery>
+                @foreach (var message in featuredMessages)
+                {
+                    var hasPhoto = !string.IsNullOrWhiteSpace(message.PhotoPath);
+                    var hasVideo = !string.IsNullOrWhiteSpace(message.VideoPath);
+                    var mediaPath = hasPhoto ? MediaUrl(message.PhotoPath) : MediaUrl(message.VideoPath);
+                    <article class="media-card" data-has-media="true">
+                        <header class="media-card__header">
+                            <p class="media-card__title">@message.DisplayName</p>
+                            <span class="media-card__meta">@message.SentDate.ToLocalTime().ToString("g")</span>
+                        </header>
+                        <div class="media-card__body">
+                            @if (hasPhoto && mediaPath is not null)
+                            {
+                                <div class="media-card__media" data-lg-item>
+                                    <a href="@mediaPath" data-sub-html="<p>@(message.MessageText ?? "")</p>">
+                                        <img src="@mediaPath" alt="Photo shared by @message.DisplayName">
+                                    </a>
+                                </div>
+                            }
+                            else if (hasVideo && mediaPath is not null)
+                            {
+                                <div class="media-card__media video-wrapper">
+                                    <video class="media-card__video" controls playsinline>
+                                        <source src="@mediaPath" type="video/mp4" />
+                                    </video>
+                                </div>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(message.MessageText))
+                            {
+                                <p class="media-card__text">@message.MessageText</p>
+                            }
+                        </div>
+                    </article>
+                }
+            </div>
+        }
+    </div>
+</section>
+
+<section>
+    <header class="page-header">
+        <span class="page-header__eyebrow">Trending now</span>
+        <h2>Tag activity from the network</h2>
+        <p class="lead">Track which topics surface most frequently to prioritise your next deep dive.</p>
+    </header>
+    @if (!Model.TagSummaries.Tags.Any())
+    {
+        <div class="empty-state">
+            <p>No tags are available yet. As soon as the tagging pipeline runs, summaries will appear here.</p>
+        </div>
+    }
+    else
+    {
+        <div class="stats-grid">
+            @foreach (var tag in Model.TagSummaries.Tags.Take(12))
+            {
+                <article class="stat-card">
+                    <span class="stat-card__label">Tag</span>
+                    <span class="stat-card__value">@tag.Tag</span>
+                    <span class="stat-card__meta">@tag.PhotoCount media item@(tag.PhotoCount == 1 ? string.Empty : "s")</span>
+                    <a class="tag-link" asp-controller="Tags" asp-action="Detail" asp-route-tag="@tag.Tag">Open tag detail</a>
+                </article>
+            }
+        </div>
+    }
+</section>
+
+<section>
+    <header class="page-header">
+        <span class="page-header__eyebrow">Next steps</span>
+        <h2>Power tools</h2>
+        <p class="lead">Head to the dedicated views for full pagination, filtering, and gallery controls.</p>
+    </header>
+    <div class="section-actions">
+        <a class="btn btn-outline" asp-controller="Messages" asp-action="Recent">Open full messenger timeline</a>
+        <a class="btn btn-outline" asp-controller="Tags" asp-action="Index">Browse tag directory</a>
+    </div>
+</section>

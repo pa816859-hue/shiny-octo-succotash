@@ -1,45 +1,98 @@
-@using System.Text.Json
-@model string
+@model MediaGallery.Web.ViewModels.TagDetailViewModel
+@using System.Linq
 @{
-    var tagName = string.IsNullOrEmpty(Model) ? "architecture" : Model;
-    ViewData["Title"] = $"Tag: {tagName}";
-    var detail = new
+    ViewData["Title"] = $"Tag · {Model.Tag}";
+
+    string? MediaUrl(string? path)
     {
-        tag = tagName,
-        description = "A curated selection featuring strong lines, modern facades, and structural details.",
-        relatedTags = new[] { "geometry", "urban", "minimal" },
-        media = new[]
+        if (string.IsNullOrWhiteSpace(path))
         {
-            new { type = "photo", title = "Detail shot", filePath = "photos/detail-shot.jpg", width = 2048, height = 1365, isAccessible = true, score = 0.93 },
-            new { type = "video", title = "Walkthrough", filePath = "videos/detail-walkthrough.mp4", width = 1920, height = 1080, isAccessible = true, score = 0.88 },
-            new { type = "photo", title = "Concept render", filePath = "photos/concept-render.jpg", width = 1600, height = 900, isAccessible = true, score = 0.91 }
+            return null;
         }
-    };
+
+        var normalized = path.Replace("\\", "/").TrimStart('/');
+        return Url.Content($"~/media/{normalized}");
+    }
+
+    var pagination = Model.Pagination;
 }
 
 <section class="page-header">
+    <span class="page-header__eyebrow">Tag detail</span>
     <h1>@ViewData["Title"]</h1>
-    <p class="lead">@detail.description</p>
+    <p class="lead">Photos aligned to the <strong>@Model.Tag</strong> tag. Use the pagination controls or jump into the slideshow.</p>
 </section>
 
-<section class="tag-detail" data-tag-view="detail" data-tag="@detail.tag" data-media-root="@Url.Content("~/media/")">
-    <div class="tag-detail__meta">
-        <h2>Related tags</h2>
-        <ul class="chip-list">
-            @foreach (var related in detail.relatedTags)
+<section class="tag-detail" data-tag-view="detail" data-tag="@Model.Tag" data-media-root="@Url.Content("~/media/")">
+    @if (!Model.Photos.Any())
+    {
+        <div class="empty-state">
+            <p>No media was found for this tag.</p>
+        </div>
+    }
+    else
+    {
+        <div class="media-gallery-grid" data-gallery aria-label="Media for @Model.Tag">
+            @foreach (var photo in Model.Photos)
             {
-                <li><a class="chip" asp-controller="Tags" asp-action="Detail" asp-route-tag="@related">@related</a></li>
+                var mediaPath = MediaUrl(photo.FilePath);
+                var topTag = photo.Tags.FirstOrDefault();
+                <article class="media-card" data-has-media="true">
+                    <header class="media-card__header">
+                        <p class="media-card__title">@photo.DisplayName</p>
+                        <span class="media-card__meta">@photo.AddedOn.ToLocalTime().ToString("g")</span>
+                    </header>
+                    <div class="media-card__body">
+                        @if (mediaPath is not null)
+                        {
+                            <div class="media-card__media" data-lg-item>
+                                <a href="@mediaPath" data-sub-html="<p>@(photo.MessageText ?? string.Empty)</p>">
+                                    <img src="@mediaPath" alt="Photo tagged @Model.Tag">
+                                </a>
+                            </div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(photo.MessageText))
+                        {
+                            <p class="media-card__text">@photo.MessageText</p>
+                        }
+                        <div class="media-card__tags">
+                            <span>@Model.Tag</span>
+                            @if (topTag is not null)
+                            {
+                                <span>Score @topTag.Score.ToString("P1")</span>
+                            }
+                        </div>
+                    </div>
+                </article>
             }
-        </ul>
-    </div>
+        </div>
+    }
 
-    <div class="media-gallery-grid" data-gallery aria-label="Media for @detail.tag"></div>
-    <div class="scroll-status" data-scroll-status aria-live="polite"></div>
+    <div class="scroll-status">Page @pagination.PageNumber of tag results.</div>
+
+    <nav class="pagination" aria-label="Tag detail pagination">
+        <span class="pagination__info">Page @pagination.PageNumber</span>
+        <div class="pagination__actions">
+            @if (pagination.HasPreviousPage)
+            {
+                <a class="btn btn-outline" asp-controller="Tags" asp-action="Detail" asp-route-tag="@Model.Tag" asp-route-page="@(pagination.PageNumber - 1)" asp-route-pageSize="@pagination.PageSize">Previous</a>
+            }
+            else
+            {
+                <button class="btn btn-outline" type="button" disabled>Previous</button>
+            }
+
+            @if (pagination.HasNextPage)
+            {
+                <a class="btn btn-outline" asp-controller="Tags" asp-action="Detail" asp-route-tag="@Model.Tag" asp-route-page="@(pagination.PageNumber + 1)" asp-route-pageSize="@pagination.PageSize">Next</a>
+            }
+            else
+            {
+                <button class="btn btn-outline" type="button" disabled>Next</button>
+            }
+        </div>
+    </nav>
 </section>
-
-<script type="application/json" id="tag-detail-data">
-    @Html.Raw(JsonSerializer.Serialize(detail))
-</script>
 
 @section Scripts {
     <script type="module" src="~/js/tagGallery.js" asp-append-version="true"></script>

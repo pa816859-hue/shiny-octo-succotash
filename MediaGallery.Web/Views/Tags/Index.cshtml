@@ -1,42 +1,117 @@
-@using System.Text.Json
+@model MediaGallery.Web.ViewModels.TagIndexViewModel
+@using System.Collections.Generic
+@using System.Linq
 @{
     ViewData["Title"] = "Tags";
-    var tags = new[]
+
+    var query = Context.Request.Query;
+    var userValue = query["userId"].ToString();
+    var hasUser = long.TryParse(userValue, out var userId);
+    var pageSizeValue = query["pageSize"].ToString();
+    var hasPageSize = int.TryParse(pageSizeValue, out var pageSize);
+    var pagination = Model.Pagination;
+
+    var queryParameters = new Dictionary<string, object?>
     {
-        new { tag = "architecture", total = 128, highlight = new { type = "photo", filePath = "photos/arch-highlight.jpg", width = 1600, height = 900, isAccessible = true }, topScore = 0.98 },
-        new { tag = "night", total = 64, highlight = new { type = "photo", filePath = "photos/night-highlight.jpg", width = 1600, height = 900, isAccessible = true }, topScore = 0.87 },
-        new { tag = "timelapse", total = 22, highlight = new { type = "video", filePath = "videos/timelapse-highlight.mp4", width = 1920, height = 1080, isAccessible = true }, topScore = 0.92 }
+        ["userId"] = hasUser ? userId : null,
+        ["pageSize"] = hasPageSize ? pageSize : pagination.PageSize
     };
+
+    string BuildPageUrl(int pageNumber)
+    {
+        var parameters = new Dictionary<string, object?>
+        {
+            ["page"] = pageNumber
+        };
+
+        foreach (var pair in queryParameters)
+        {
+            if (pair.Value is not null)
+            {
+                parameters[pair.Key] = pair.Value;
+            }
+        }
+
+        return Url.Action("Index", "Tags", parameters) ?? string.Empty;
+    }
+
+    var initialTag = Model.Tags.FirstOrDefault()?.Tag;
 }
 
 <section class="page-header">
+    <span class="page-header__eyebrow">Tag intelligence</span>
     <h1>@ViewData["Title"]</h1>
-    <p class="lead">Pick a tag to drill deeper into related photos and videos.</p>
+    <p class="lead">Pick a tag to drill deeper into related photos and videos. Use the preview panel to eyeball relevance before opening the detail view.</p>
 </section>
 
-<section class="tag-browser" data-tag-view="index" data-media-root="@Url.Content("~/media/")">
+<form method="get" class="filter-form" aria-label="Filter tags">
+    <div class="filter-field">
+        <label for="userId">Limit to user ID</label>
+        <input type="number" id="userId" name="userId" value="@userValue" placeholder="Any" min="1" />
+    </div>
+    <div class="filter-field">
+        <label for="pageSize">Page size</label>
+        <input type="number" id="pageSize" name="pageSize" value="@(hasPageSize ? pageSize : pagination.PageSize)" min="1" max="100" />
+    </div>
+    <div class="filter-actions">
+        <button class="btn btn-primary" type="submit">Apply</button>
+        <a class="btn btn-ghost" asp-controller="Tags" asp-action="Index">Reset</a>
+    </div>
+</form>
+
+<section class="tag-browser" data-tag-view="index" data-media-root="@Url.Content("~/media/")" data-detail-endpoint="@Url.Action("DetailData", "Tags")" data-preview-page-size="8" data-initial-tag="@initialTag">
     <div class="tag-browser__list" data-tag-list aria-label="Available tags">
-        @foreach (var tag in tags)
+        @if (!Model.Tags.Any())
         {
-            <article class="tag-card" data-tag="@tag.tag">
-                <h2>@tag.tag</h2>
-                <p>@tag.total items</p>
-                <button class="btn" type="button" data-action="preview-tag" data-tag="@tag.tag">Preview</button>
-                <a class="btn btn-link" asp-controller="Tags" asp-action="Detail" asp-route-tag="@tag.tag">Open detail</a>
-            </article>
+            <div class="empty-state">
+                <p>No tags found. Try adjusting the filters or check back after new media is processed.</p>
+            </div>
+        }
+        else
+        {
+            @foreach (var tag in Model.Tags)
+            {
+                <article class="tag-card" data-tag="@tag.Tag">
+                    <h2 class="tag-card__title">@tag.Tag</h2>
+                    <p class="tag-card__count">@tag.PhotoCount media item@(tag.PhotoCount == 1 ? string.Empty : "s")</p>
+                    <div class="toolbar__group">
+                        <button class="btn btn-outline" type="button" data-action="preview-tag" data-tag="@tag.Tag">Preview</button>
+                        <a class="btn btn-outline" asp-controller="Tags" asp-action="Detail" asp-route-tag="@tag.Tag">Open detail</a>
+                    </div>
+                </article>
+            }
         }
     </div>
 
     <aside class="tag-browser__preview" aria-live="polite">
         <h2 class="tag-browser__preview-title" data-preview-title>Preview</h2>
         <div class="media-gallery-grid" data-preview-gallery></div>
-        <div class="scroll-status" data-scroll-status aria-live="polite"></div>
+        <div class="scroll-status" data-scroll-status aria-live="polite">Select a tag to load preview media.</div>
     </aside>
 </section>
 
-<script type="application/json" id="tag-index-data">
-    @Html.Raw(JsonSerializer.Serialize(tags))
-</script>
+<nav class="pagination" aria-label="Tag pagination">
+    <span class="pagination__info">Page @pagination.PageNumber</span>
+    <div class="pagination__actions">
+        @if (pagination.HasPreviousPage)
+        {
+            <a class="btn btn-outline" href="@BuildPageUrl(pagination.PageNumber - 1)">Previous</a>
+        }
+        else
+        {
+            <button class="btn btn-outline" type="button" disabled>Previous</button>
+        }
+
+        @if (pagination.HasNextPage)
+        {
+            <a class="btn btn-outline" href="@BuildPageUrl(pagination.PageNumber + 1)">Next</a>
+        }
+        else
+        {
+            <button class="btn btn-outline" type="button" disabled>Next</button>
+        }
+    </div>
+</nav>
 
 @section Scripts {
     <script type="module" src="~/js/tagGallery.js" asp-append-version="true"></script>
