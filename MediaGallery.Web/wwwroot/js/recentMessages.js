@@ -8,6 +8,11 @@ const LIGHTGALLERY_PLUGINS = [
 const galleryInstances = new WeakMap();
 const plyrPlayers = new WeakMap();
 
+const MIME_FALLBACKS = {
+    photo: 'image/jpeg',
+    video: 'video/mp4'
+};
+
 function combineMediaUrl(root, filePath) {
     if (!filePath) {
         return null;
@@ -79,6 +84,55 @@ function destroyPlayers(root) {
     });
 }
 
+function guessMimeType(path, type) {
+    if (!path) {
+        return type === 'video' ? MIME_FALLBACKS.video : MIME_FALLBACKS.photo;
+    }
+
+    const extension = path.split('.').pop()?.toLowerCase();
+    if (!extension) {
+        return type === 'video' ? MIME_FALLBACKS.video : MIME_FALLBACKS.photo;
+    }
+
+    const map = {
+        jpg: 'image/jpeg',
+        jpeg: 'image/jpeg',
+        png: 'image/png',
+        webp: 'image/webp',
+        mp4: 'video/mp4',
+        webm: 'video/webm',
+        mov: 'video/quicktime'
+    };
+
+    return map[extension] || (type === 'video' ? MIME_FALLBACKS.video : MIME_FALLBACKS.photo);
+}
+
+function normalizeMessage(raw) {
+    if (!raw) {
+        return null;
+    }
+
+    const hasPhoto = Boolean(raw.photoPath);
+    const hasVideo = Boolean(raw.videoPath);
+    const mediaType = hasPhoto ? 'photo' : hasVideo ? 'video' : null;
+    const filePath = hasPhoto ? raw.photoPath : hasVideo ? raw.videoPath : null;
+
+    return {
+        messageId: raw.messageId,
+        channelId: raw.channelId,
+        userId: raw.userId,
+        user: raw.displayName ?? raw.username ?? `User ${raw.userId}`,
+        text: raw.messageText ?? '',
+        sentDate: raw.sentDate,
+        mediaType,
+        filePath,
+        mimeType: guessMimeType(filePath, mediaType),
+        photoId: raw.photoId,
+        videoId: raw.videoId,
+        isAccessible: Boolean(mediaType && filePath)
+    };
+}
+
 function renderCard(item, mediaRoot) {
     const card = document.createElement('article');
     card.className = 'media-card';
@@ -132,7 +186,7 @@ function renderCard(item, mediaRoot) {
 
             const source = document.createElement('source');
             source.src = src;
-            source.type = item.mimeType ?? 'video/mp4';
+            source.type = item.mimeType ?? MIME_FALLBACKS.video;
             video.appendChild(source);
             wrapper.appendChild(video);
             figure.appendChild(wrapper);
@@ -210,6 +264,7 @@ function initRecentMessages() {
     const layoutToggle = container.querySelector('[data-action="toggle-layout"]');
     const slideshowBtn = container.querySelector('[data-action="start-slideshow"]');
     const mediaRoot = getMediaRoot(container);
+    const seenIds = new Set();
 
     const feedEndpoint = container.dataset.feedEndpoint;
     const allItems = [];
@@ -257,25 +312,33 @@ function initRecentMessages() {
         updateStatus(`${items.length} item${items.length === 1 ? '' : 's'} loaded.`);
     }
 
-    function ingestItems(items) {
-        if (!items?.length) {
+function ingestItems(items) {
+    if (!items?.length) {
+        return;
+    }
+    items.forEach((raw) => {
+        const item = normalizeMessage(raw);
+        if (!item || item.isAccessible === false) {
             return;
         }
-        items.forEach((item) => {
-            if (item.isAccessible === false) {
-                return;
-            }
-            allItems.push(item);
-        });
-        render();
-    }
+        if (seenIds.has(item.messageId)) {
+            return;
+        }
+        seenIds.add(item.messageId);
+        allItems.push(item);
+    });
+    render();
+}
 
     const initialItems = parseInitialData();
     ingestItems(initialItems);
 
     let loading = false;
-    let page = 0;
-    let hasMore = Boolean(feedEndpoint);
+    let page = Number(container.dataset.initialPage || '1');
+    if (Number.isNaN(page) || page < 1) {
+        page = 1;
+    }
+    let hasMore = Boolean(feedEndpoint) && container.dataset.hasMore !== 'false';
 
     async function fetchPage(nextPage) {
         if (!feedEndpoint) {
@@ -290,7 +353,15 @@ function initRecentMessages() {
                 throw new Error(`Request failed with ${response.status}`);
             }
             const payload = await response.json();
-            return Array.isArray(payload.items) ? payload.items : payload;
+            if (Array.isArray(payload.items)) {
+                return payload.items;
+            }
+
+            if (payload.messages && Array.isArray(payload.messages.items)) {
+                return payload.messages.items;
+            }
+
+            return Array.isArray(payload) ? payload : [];
         } catch (error) {
             console.error('Unable to load more messages', error);
             updateStatus('Unable to load additional messages.');

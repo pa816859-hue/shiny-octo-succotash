@@ -1,44 +1,60 @@
+@model TagDetailViewModel
+@using System.Linq
 @using System.Text.Json
-@model string
+@using MediaGallery.Web.Services.Models
 @{
-    var tagName = string.IsNullOrEmpty(Model) ? "architecture" : Model;
-    ViewData["Title"] = $"Tag: {tagName}";
-    var detail = new
-    {
-        tag = tagName,
-        description = "A curated selection featuring strong lines, modern facades, and structural details.",
-        relatedTags = new[] { "geometry", "urban", "minimal" },
-        media = new[]
-        {
-            new { type = "photo", title = "Detail shot", filePath = "photos/detail-shot.jpg", width = 2048, height = 1365, isAccessible = true, score = 0.93 },
-            new { type = "video", title = "Walkthrough", filePath = "videos/detail-walkthrough.mp4", width = 1920, height = 1080, isAccessible = true, score = 0.88 },
-            new { type = "photo", title = "Concept render", filePath = "photos/concept-render.jpg", width = 1600, height = 900, isAccessible = true, score = 0.91 }
-        }
-    };
+    ViewData["Title"] = $"Tag: {Model.Tag}";
+    var jsonOptions = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+    var feedEndpoint = Url.Action("DetailData", new { tag = Model.Tag, pageSize = Model.Pagination.PageSize });
+    var initialData = new TagDetailDataResult(Model.Tag, new PagedResult<TaggedPhoto>(Model.Photos, Model.Pagination));
+    var relatedTags = Model.Photos
+        .SelectMany(photo => photo.Tags)
+        .Select(tag => tag.Tag)
+        .Where(tag => !string.Equals(tag, Model.Tag, StringComparison.OrdinalIgnoreCase))
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .Take(12)
+        .ToList();
 }
 
 <section class="page-header">
-    <h1>@ViewData["Title"]</h1>
-    <p class="lead">@detail.description</p>
+    <div>
+        <h1>@ViewData["Title"]</h1>
+        <p class="lead">@Model.Photos.Count.ToString("N0") media items currently indexed for <strong>@Model.Tag</strong>.</p>
+    </div>
+    <div class="page-header__meta">
+        <span class="badge">Page @Model.Pagination.PageNumber</span>
+        @if (Model.Pagination.HasNextPage)
+        {
+            <span class="badge badge--subtle">More results available</span>
+        }
+    </div>
 </section>
 
-<section class="tag-detail" data-tag-view="detail" data-tag="@detail.tag" data-media-root="@Url.Content("~/media/")">
+<section class="tag-detail" data-tag-view="detail" data-tag="@Model.Tag" data-feed-endpoint="@feedEndpoint" data-media-root="@Url.Content("~/media/")">
     <div class="tag-detail__meta">
         <h2>Related tags</h2>
-        <ul class="chip-list">
-            @foreach (var related in detail.relatedTags)
-            {
-                <li><a class="chip" asp-controller="Tags" asp-action="Detail" asp-route-tag="@related">@related</a></li>
-            }
-        </ul>
+        @if (relatedTags.Any())
+        {
+            <ul class="chip-list">
+                @foreach (var related in relatedTags)
+                {
+                    <li><a class="chip" asp-controller="Tags" asp-action="Detail" asp-route-tag="@related">@related</a></li>
+                }
+            </ul>
+        }
+        else
+        {
+            <p class="panel__empty">No additional tags detected in this slice.</p>
+        }
     </div>
 
-    <div class="media-gallery-grid" data-gallery aria-label="Media for @detail.tag"></div>
+    <div class="media-gallery-grid" data-gallery aria-label="Media for @Model.Tag"></div>
     <div class="scroll-status" data-scroll-status aria-live="polite"></div>
+    <div class="scroll-sentinel" data-scroll-sentinel></div>
 </section>
 
 <script type="application/json" id="tag-detail-data">
-    @Html.Raw(JsonSerializer.Serialize(detail))
+    @Html.Raw(JsonSerializer.Serialize(initialData, jsonOptions))
 </script>
 
 @section Scripts {

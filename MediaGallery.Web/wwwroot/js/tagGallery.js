@@ -114,7 +114,9 @@ function createMediaCard(item, mediaRoot, options = {}) {
     const figure = document.createElement('figure');
     figure.className = 'media-card__figure';
 
-    if (item.type === 'photo') {
+    const kind = item.type ?? (item.filePath && item.filePath.match(/\.(mp4|webm|mov)$/i) ? 'video' : 'photo');
+
+    if (kind === 'photo') {
         const src = combineMediaUrl(mediaRoot, item.filePath);
         if (src) {
             const wrapper = document.createElement('div');
@@ -135,7 +137,7 @@ function createMediaCard(item, mediaRoot, options = {}) {
             wrapper.appendChild(anchor);
             figure.appendChild(wrapper);
         }
-    } else if (item.type === 'video') {
+    } else if (kind === 'video') {
         const src = combineMediaUrl(mediaRoot, item.filePath);
         if (src) {
             const wrapper = document.createElement('div');
@@ -219,13 +221,12 @@ function initTagIndex() {
     const previewGallery = container.querySelector('[data-preview-gallery]');
     const previewTitle = container.querySelector('[data-preview-title]');
     const statusElement = container.querySelector('[data-scroll-status]');
-    const data = parseJson('tag-index-data');
-    if (!previewGallery || !Array.isArray(data)) {
+    const metadata = parseJson('tag-index-metadata') || [];
+    const detailEndpoint = container.dataset.detailEndpoint;
+    if (!previewGallery) {
         return false;
     }
 
-    const tagMap = new Map();
-    data.forEach((tag) => tagMap.set(tag.tag, tag));
     const cards = Array.from(container.querySelectorAll('.tag-card'));
 
     function updateStatus(message) {
@@ -234,52 +235,84 @@ function initTagIndex() {
         }
     }
 
-    function renderPreview(tagName) {
-        const info = tagMap.get(tagName);
+    function renderPreview(tagName, mediaItems) {
         destroyPlayers(previewGallery);
         destroyGallery(previewGallery);
         previewGallery.innerHTML = '';
 
         cards.forEach((card) => card.classList.toggle('is-active', card.dataset.tag === tagName));
 
-        if (!info) {
-            updateStatus('Select a tag to preview media.');
-            if (previewTitle) {
-                previewTitle.textContent = 'Preview';
-            }
-            return;
-        }
-
         if (previewTitle) {
-            previewTitle.textContent = `Preview: ${info.tag}`;
+            previewTitle.textContent = mediaItems?.length ? `Preview: ${tagName}` : 'Preview';
         }
 
-        if (!info.highlight || info.highlight.isAccessible === false) {
+        if (!mediaItems?.length) {
             updateStatus('No accessible preview media for this tag.');
             return;
         }
 
-        const meta = [formatScore(info.topScore), `${info.total} items available`];
-        const card = createMediaCard(
-            { ...info.highlight, title: info.tag },
-            mediaRoot,
-            { title: info.tag, meta }
-        );
-        previewGallery.appendChild(card);
+        const fragment = document.createDocumentFragment();
+        mediaItems.slice(0, 3).forEach((item) => {
+            const meta = [];
+            if (typeof item.score === 'number') {
+                meta.push(formatScore(item.score));
+            }
+            if (item.sentDate) {
+                const sent = new Date(item.sentDate);
+                meta.push(`Sent ${sent.toLocaleDateString()}`);
+            }
+            fragment.appendChild(createMediaCard(
+                {
+                    type: 'photo',
+                    filePath: item.filePath,
+                    title: item.messageText || `Photo ${item.photoId}`,
+                    width: item.width,
+                    height: item.height
+                },
+                mediaRoot,
+                { title: item.messageText || `Photo ${item.photoId}`, meta }
+            ));
+        });
+
+        previewGallery.appendChild(fragment);
         ensureGallery(previewGallery);
         previewGallery.querySelectorAll('video').forEach(initPlyr);
-        updateStatus('Preview ready. Use keyboard arrows to focus media.');
+        updateStatus(`${mediaItems.length} preview item${mediaItems.length === 1 ? '' : 's'} loaded.`);
+    }
+
+    async function loadPreview(tagName) {
+        if (!detailEndpoint) {
+            updateStatus('Preview requires API support.');
+            return;
+        }
+
+        updateStatus('Loading preview…');
+
+        try {
+            const url = new URL(detailEndpoint, window.location.origin);
+            url.searchParams.set('tag', tagName);
+            const response = await fetch(url.toString());
+            if (!response.ok) {
+                throw new Error(`Failed with ${response.status}`);
+            }
+            const payload = await response.json();
+            const items = payload.photos?.items ?? [];
+            renderPreview(tagName, items);
+        } catch (error) {
+            console.error('Unable to load preview', error);
+            updateStatus('Preview unavailable at the moment.');
+        }
     }
 
     container.querySelectorAll('[data-action="preview-tag"]').forEach((button) => {
         button.addEventListener('click', () => {
             const tag = button.dataset.tag;
-            renderPreview(tag);
+            loadPreview(tag);
         });
     });
 
-    if (data.length) {
-        renderPreview(data[0].tag);
+    if (metadata.length) {
+        loadPreview(metadata[0].tag);
     }
 
     attachKeyboardNavigation(container, previewGallery);
@@ -300,30 +333,103 @@ function initTagDetail() {
         return false;
     }
 
-    const accessibleMedia = (detail.media || []).filter((item) => item.isAccessible !== false);
-    accessibleMedia.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+    let page = detail.photos?.pagination?.pageNumber ?? 1;
+    let hasMore = detail.photos?.pagination?.hasNextPage ?? false;
+    const feedEndpoint = container.dataset.feedEndpoint;
+
+    function appendItems(items) {
+        if (!Array.isArray(items) || !items.length) {
+            return;
+        }
+
+        const fragment = document.createDocumentFragment();
+        items.forEach((item) => {
+            if (!item.filePath) {
+                return;
+            }
+            const meta = [
+                formatScore(item.score),
+                item.displayName ? `By ${item.displayName}` : null,
+                item.sentDate ? new Date(item.sentDate).toLocaleDateString() : null
+            ].filter(Boolean);
+            fragment.appendChild(createMediaCard(
+                {
+                    type: 'photo',
+                    filePath: item.filePath,
+                    title: item.messageText ?? `Photo ${item.photoId}`
+                },
+                mediaRoot,
+                { meta }
+            ));
+        });
+
+        if (!fragment.childNodes.length) {
+            return;
+        }
+
+        destroyPlayers(galleryElement);
+        destroyGallery(galleryElement);
+        galleryElement.appendChild(fragment);
+        ensureGallery(galleryElement);
+        galleryElement.querySelectorAll('video').forEach(initPlyr);
+    }
 
     destroyPlayers(galleryElement);
     destroyGallery(galleryElement);
     galleryElement.innerHTML = '';
 
-    if (!accessibleMedia.length) {
-        if (statusElement) {
-            statusElement.textContent = 'No media available for this tag.';
-        }
-        return true;
+    appendItems(detail.photos?.items ?? []);
+
+    if (statusElement) {
+        const count = detail.photos?.items?.length ?? 0;
+        statusElement.textContent = count
+            ? `${count} media item${count === 1 ? '' : 's'} loaded.`
+            : 'No media available for this tag.';
     }
 
-    const fragment = document.createDocumentFragment();
-    accessibleMedia.forEach((item) => {
-        const meta = [formatScore(item.score)];
-        fragment.appendChild(createMediaCard(item, mediaRoot, { meta }));
-    });
-    galleryElement.appendChild(fragment);
-    ensureGallery(galleryElement);
-    galleryElement.querySelectorAll('video').forEach(initPlyr);
-    if (statusElement) {
-        statusElement.textContent = `${accessibleMedia.length} media item${accessibleMedia.length === 1 ? '' : 's'} loaded.`;
+    if (feedEndpoint && hasMore) {
+        const sentinel = container.querySelector('[data-scroll-sentinel]');
+        if (sentinel && 'IntersectionObserver' in window) {
+            const observer = new IntersectionObserver(async (entries) => {
+                entries.forEach(async (entry) => {
+                    if (!entry.isIntersecting || !hasMore) {
+                        return;
+                    }
+
+                    if (statusElement) {
+                        statusElement.textContent = 'Loading more media…';
+                    }
+
+                    try {
+                        const url = new URL(feedEndpoint, window.location.origin);
+                        url.searchParams.set('page', String(page + 1));
+                        const response = await fetch(url.toString());
+                        if (!response.ok) {
+                            throw new Error(`Failed with ${response.status}`);
+                        }
+                        const payload = await response.json();
+                        const items = payload.photos?.items ?? [];
+                        hasMore = payload.photos?.pagination?.hasNextPage ?? false;
+                        page = payload.photos?.pagination?.pageNumber ?? page + 1;
+                        appendItems(items);
+                        if (statusElement) {
+                            statusElement.textContent = hasMore
+                                ? `Loaded ${items.length} more item${items.length === 1 ? '' : 's'}.`
+                                : 'End of results.';
+                        }
+                    } catch (error) {
+                        console.error('Unable to extend tag gallery', error);
+                        hasMore = false;
+                        if (statusElement) {
+                            statusElement.textContent = 'Unable to load more media.';
+                        }
+                    }
+                });
+            }, {
+                rootMargin: '200px'
+            });
+            observer.observe(sentinel);
+        }
     }
 
     attachKeyboardNavigation(container, galleryElement);

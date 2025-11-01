@@ -38,9 +38,12 @@ public class UsersController : Controller
 
         try
         {
-            var viewModel = await _userService
+            var profile = await _userService
                 .GetUserProfileAsync(id, normalizedPage, normalizedPageSize, channelId, mediaOnly, sortOrder, cancellationToken)
                 .ConfigureAwait(false);
+
+            var query = new MessageQueryViewModel(normalizedPage, normalizedPageSize, channelId, id, mediaOnly, sortOrder);
+            var viewModel = new UserProfilePageViewModel(profile, query);
 
             return View(viewModel);
         }
