@@ -13,4 +13,9 @@ public interface IMessageService
         bool mediaOnly,
         MessageSortOrder sortOrder,
         CancellationToken cancellationToken = default);
+
+    Task<MediaChronologyViewModel> GetMediaChronologyAsync(
+        long? photoId,
+        long? videoId,
+        CancellationToken cancellationToken = default);
 }

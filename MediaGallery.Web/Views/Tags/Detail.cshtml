@@ -78,6 +78,12 @@
                                         <span>Score @topTag.Score.ToString("P1")</span>
                                     }
                                 </div>
+                                <div class="media-card__actions">
+                                    <a class="btn btn-outline btn-sm" asp-controller="Messages" asp-action="MediaChronology" asp-route-photoId="@photo.PhotoId">
+                                        <span aria-hidden="true">🕑</span>
+                                        <span>View chronology</span>
+                                    </a>
+                                </div>
                             </div>
                         </article>
                     }

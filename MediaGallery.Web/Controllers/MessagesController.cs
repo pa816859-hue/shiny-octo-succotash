@@ -61,4 +61,30 @@ public class MessagesController : Controller
         var result = new PagedResult<RecentMessage>(viewModel.Messages, viewModel.Pagination);
         return Ok(result);
     }
+
+    [HttpGet]
+    public async Task<IActionResult> MediaChronology(
+        [FromQuery] long? photoId = null,
+        [FromQuery] long? videoId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var hasPhoto = photoId.HasValue;
+        var hasVideo = videoId.HasValue;
+
+        if (!hasPhoto && !hasVideo)
+        {
+            return BadRequest(new { error = "Provide a photoId or a videoId to view its chronology." });
+        }
+
+        if (hasPhoto && hasVideo)
+        {
+            return BadRequest(new { error = "Provide only one media identifier at a time." });
+        }
+
+        var viewModel = await _messageService
+            .GetMediaChronologyAsync(photoId, videoId, cancellationToken)
+            .ConfigureAwait(false);
+
+        return View(viewModel);
+    }
 }

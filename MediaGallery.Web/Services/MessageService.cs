@@ -58,4 +58,49 @@ public class MessageService : IMessageService
 
         return normalizedItems.ToRecentMessagesViewModel(pagination);
     }
+
+    public async Task<MediaChronologyViewModel> GetMediaChronologyAsync(
+        long? photoId,
+        long? videoId,
+        CancellationToken cancellationToken = default)
+    {
+        var hasPhoto = photoId.HasValue;
+        var hasVideo = videoId.HasValue;
+
+        if (hasPhoto == hasVideo)
+        {
+            throw new ArgumentException("Provide either a photo id or a video id.", hasPhoto ? nameof(photoId) : nameof(videoId));
+        }
+
+        var items = await _messageRepository
+            .GetMediaChronologyAsync(photoId, videoId, cancellationToken)
+            .ConfigureAwait(false);
+
+        var normalizedItems = items
+            .Select(message => message with
+            {
+                PhotoPath = MediaPathFormatter.ToRelativeWebPath(message.PhotoPath, _mediaFileProvider.RootDirectory),
+                VideoPath = MediaPathFormatter.ToRelativeWebPath(message.VideoPath, _mediaFileProvider.RootDirectory)
+            })
+            .ToList();
+
+        var occurrences = normalizedItems
+            .Select(message => message.ToRecentMessage())
+            .ToList();
+
+        string? mediaPath = null;
+        if (hasPhoto)
+        {
+            mediaPath = normalizedItems.FirstOrDefault()?.PhotoPath;
+        }
+        else if (hasVideo)
+        {
+            mediaPath = normalizedItems.FirstOrDefault()?.VideoPath;
+        }
+
+        var mediaType = hasPhoto ? MediaChronologyType.Photo : MediaChronologyType.Video;
+        var mediaId = hasPhoto ? photoId!.Value : videoId!.Value;
+
+        return new MediaChronologyViewModel(mediaType, mediaId, mediaPath, occurrences);
+    }
 }
