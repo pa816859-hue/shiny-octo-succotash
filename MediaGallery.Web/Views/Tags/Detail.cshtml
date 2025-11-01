@@ -39,7 +39,18 @@
                 var topTag = photo.Tags.FirstOrDefault();
                 <article class="media-card" data-has-media="true">
                     <header class="media-card__header">
-                        <p class="media-card__title">@photo.DisplayName</p>
+                        <p class="media-card__title">
+                            @if (photo.UserId.HasValue)
+                            {
+                                <a class="media-card__user-link" asp-controller="Users" asp-action="Profile" asp-route-id="@photo.UserId.Value">
+                                    @photo.DisplayName
+                                </a>
+                            }
+                            else
+                            {
+                                @photo.DisplayName
+                            }
+                        </p>
                         <span class="media-card__meta">@photo.AddedOn.ToLocalTime().ToString("g")</span>
                     </header>
                     <div class="media-card__body">

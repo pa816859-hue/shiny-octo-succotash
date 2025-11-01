@@ -307,6 +307,17 @@ video {
     font-size: 1rem;
 }
 
+.media-card__user-link {
+    color: inherit;
+    text-decoration: none;
+}
+
+.media-card__user-link:hover,
+.media-card__user-link:focus {
+    color: var(--accent);
+    text-decoration: underline;
+}
+
 .media-card__meta {
     display: inline-flex;
     align-items: center;
@@ -545,6 +556,45 @@ video {
     border-radius: var(--radius-lg);
     padding: 1.5rem;
     box-shadow: var(--shadow-soft);
+}
+
+.user-profile__content {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.user-profile__section {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-soft);
+}
+
+.user-profile__section-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.user-profile__section-header h2 {
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.user-profile__section-header p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.text-message-list {
+    display: grid;
+    gap: 1rem;
 }
 
 .user-profile__identity {

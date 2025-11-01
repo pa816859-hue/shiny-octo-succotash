@@ -135,7 +135,11 @@
                 var hasMedia = hasPhoto || hasVideo;
                 <article class="media-card@(hasMedia ? string.Empty : " media-card--text")" data-message-id="@message.MessageId" data-has-media="@(hasMedia.ToString().ToLowerInvariant())">
                     <header class="media-card__header">
-                        <p class="media-card__title">@message.DisplayName</p>
+                        <p class="media-card__title">
+                            <a class="media-card__user-link" asp-controller="Users" asp-action="Profile" asp-route-id="@message.UserId">
+                                @message.DisplayName
+                            </a>
+                        </p>
                         <span class="media-card__meta">Channel @message.ChannelId · @message.SentDate.ToLocalTime().ToString("g")</span>
                     </header>
                     <div class="media-card__body">

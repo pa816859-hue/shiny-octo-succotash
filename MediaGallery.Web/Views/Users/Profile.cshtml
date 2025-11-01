@@ -27,6 +27,9 @@
         ? parsedSort
         : MessageSortOrder.NewestFirst;
     var pagination = Model.Pagination;
+    var textMessages = Model.TextMessages;
+    var photoMessages = Model.PhotoMessages;
+    var videoMessages = Model.VideoMessages;
 
     var queryParameters = new Dictionary<string, object?>
     {
@@ -128,53 +131,124 @@
         </form>
     </aside>
 
-    <div class="user-profile__gallery" data-gallery tabindex="0" aria-label="User media gallery">
-        @if (!Model.Messages.Any())
-        {
-            <div class="empty-state">
-                <p>No messages matched the selected filters for this user.</p>
+    <div class="user-profile__content">
+        <section class="user-profile__section" aria-labelledby="user-text-messages">
+            <div class="user-profile__section-header">
+                <h2 id="user-text-messages">Text transmissions</h2>
+                <p>All text messages captured for this user.</p>
             </div>
-        }
-        else
-        {
-            <div class="media-gallery-grid">
-                @foreach (var message in Model.Messages)
-                {
-                    var hasPhoto = !string.IsNullOrWhiteSpace(message.PhotoPath);
-                    var hasVideo = !string.IsNullOrWhiteSpace(message.VideoPath);
-                    var mediaPath = hasPhoto ? MediaUrl(message.PhotoPath) : MediaUrl(message.VideoPath);
-                    var hasMedia = hasPhoto || hasVideo;
-                    <article class="media-card@(hasMedia ? string.Empty : " media-card--text")" data-message-id="@message.MessageId" data-has-media="@(hasMedia.ToString().ToLowerInvariant())">
-                        <header class="media-card__header">
-                            <p class="media-card__title">Channel @message.ChannelId</p>
-                            <span class="media-card__meta">@message.SentDate.ToLocalTime().ToString("g")</span>
-                        </header>
-                        <div class="media-card__body">
-                            @if (hasPhoto && mediaPath is not null)
-                            {
+            @if (!textMessages.Any())
+            {
+                <div class="empty-state">
+                    <p>No text messages matched the selected filters for this user.</p>
+                </div>
+            }
+            else
+            {
+                <div class="text-message-list">
+                    @foreach (var message in textMessages)
+                    {
+                        <article class="media-card media-card--text" data-message-id="@message.MessageId" tabindex="0">
+                            <header class="media-card__header">
+                                <p class="media-card__title">Channel @message.ChannelId</p>
+                                <span class="media-card__meta">@message.SentDate.ToLocalTime().ToString("g")</span>
+                            </header>
+                            <div class="media-card__body">
+                                <p class="media-card__text">@message.MessageText</p>
+                            </div>
+                        </article>
+                    }
+                </div>
+            }
+        </section>
+
+        <section class="user-profile__section" aria-labelledby="user-photo-gallery">
+            <div class="user-profile__section-header">
+                <h2 id="user-photo-gallery">Photo drops</h2>
+                <p>Unique photo attachments sent by this user.</p>
+            </div>
+            @if (!photoMessages.Any())
+            {
+                <div class="empty-state">
+                    <p>No photos matched the selected filters.</p>
+                </div>
+            }
+            else
+            {
+                <div class="media-gallery-grid" data-gallery tabindex="0" aria-label="User photo gallery">
+                    @foreach (var message in photoMessages)
+                    {
+                        var mediaPath = MediaUrl(message.PhotoPath);
+                        if (mediaPath is null)
+                        {
+                            continue;
+                        }
+
+                        <article class="media-card" data-message-id="@message.MessageId" data-has-media="true" tabindex="0">
+                            <header class="media-card__header">
+                                <p class="media-card__title">Channel @message.ChannelId</p>
+                                <span class="media-card__meta">@message.SentDate.ToLocalTime().ToString("g")</span>
+                            </header>
+                            <div class="media-card__body">
                                 <div class="media-card__media" data-lg-item>
                                     <a href="@mediaPath" data-sub-html="<p>@(message.MessageText ?? string.Empty)</p>">
                                         <img src="@mediaPath" alt="Photo shared by @Model.User.DisplayName">
                                     </a>
                                 </div>
-                            }
-                            else if (hasVideo && mediaPath is not null)
-                            {
+                                @if (!string.IsNullOrWhiteSpace(message.MessageText))
+                                {
+                                    <p class="media-card__text">@message.MessageText</p>
+                                }
+                            </div>
+                        </article>
+                    }
+                </div>
+            }
+        </section>
+
+        <section class="user-profile__section" aria-labelledby="user-video-gallery">
+            <div class="user-profile__section-header">
+                <h2 id="user-video-gallery">Video drops</h2>
+                <p>Unique video attachments sent by this user.</p>
+            </div>
+            @if (!videoMessages.Any())
+            {
+                <div class="empty-state">
+                    <p>No videos matched the selected filters.</p>
+                </div>
+            }
+            else
+            {
+                <div class="media-gallery-grid" aria-label="User video gallery">
+                    @foreach (var message in videoMessages)
+                    {
+                        var mediaPath = MediaUrl(message.VideoPath);
+                        if (mediaPath is null)
+                        {
+                            continue;
+                        }
+
+                        <article class="media-card" data-message-id="@message.MessageId" data-has-media="true" tabindex="0">
+                            <header class="media-card__header">
+                                <p class="media-card__title">Channel @message.ChannelId</p>
+                                <span class="media-card__meta">@message.SentDate.ToLocalTime().ToString("g")</span>
+                            </header>
+                            <div class="media-card__body">
                                 <div class="media-card__media video-wrapper">
                                     <video class="media-card__video" controls playsinline>
                                         <source src="@mediaPath" type="video/mp4" />
                                     </video>
                                 </div>
-                            }
-                            @if (!string.IsNullOrWhiteSpace(message.MessageText))
-                            {
-                                <p class="media-card__text">@message.MessageText</p>
-                            }
-                        </div>
-                    </article>
-                }
-            </div>
-        }
+                                @if (!string.IsNullOrWhiteSpace(message.MessageText))
+                                {
+                                    <p class="media-card__text">@message.MessageText</p>
+                                }
+                            </div>
+                        </article>
+                    }
+                </div>
+            }
+        </section>
 
         <div class="scroll-status">
             Showing page @pagination.PageNumber with up to @pagination.PageSize messages.
