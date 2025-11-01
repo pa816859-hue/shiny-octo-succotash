@@ -274,6 +274,119 @@ video {
     gap: 1.5rem;
 }
 
+.media-carousel {
+    --carousel-control-size: 3rem;
+    position: relative;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.media-carousel__viewport {
+    position: relative;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.45) transparent;
+    padding-block: 0.5rem 0.75rem;
+}
+
+.media-carousel__viewport::-webkit-scrollbar {
+    height: 8px;
+}
+
+.media-carousel__viewport::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.media-carousel__viewport::-webkit-scrollbar-thumb {
+    background: linear-gradient(90deg, rgba(59, 130, 246, 0.25), rgba(56, 189, 248, 0.45));
+    border-radius: 999px;
+}
+
+.media-carousel__track {
+    display: flex;
+    gap: 1.5rem;
+    min-height: 100%;
+    padding-inline: 0.25rem;
+}
+
+.media-carousel__track > * {
+    flex: 0 0 min(22rem, 80vw);
+    scroll-snap-align: start;
+}
+
+.media-carousel__control {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--carousel-control-size);
+    height: var(--carousel-control-size);
+    border-radius: 999px;
+    border: none;
+    background: rgba(15, 23, 42, 0.55);
+    color: #fff;
+    box-shadow: 0 20px 45px -20px rgba(15, 23, 42, 0.7);
+    cursor: pointer;
+    transition: transform var(--transition-fast), background var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.media-carousel__control span {
+    font-size: 1.75rem;
+    line-height: 1;
+}
+
+.media-carousel__control:hover,
+.media-carousel__control:focus-visible {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.9), rgba(14, 165, 233, 0.9));
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 22px 65px -24px rgba(59, 130, 246, 0.65);
+}
+
+.media-carousel__control[disabled] {
+    opacity: 0.35;
+    cursor: default;
+    transform: none;
+}
+
+.media-carousel__control--prev {
+    justify-self: end;
+}
+
+.media-carousel__control--next {
+    justify-self: start;
+}
+
+@media (max-width: 768px) {
+    .media-carousel {
+        grid-template-columns: 1fr;
+    }
+
+    .media-carousel__control {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 2.75rem;
+        height: 2.75rem;
+        background: rgba(15, 23, 42, 0.45);
+    }
+
+    .media-carousel__control--prev {
+        left: 0.75rem;
+    }
+
+    .media-carousel__control--next {
+        right: 0.75rem;
+    }
+
+    .media-carousel__viewport {
+        padding-inline: 2.75rem;
+    }
+}
+
 .media-card {
     background: var(--surface-0);
     border-radius: var(--radius-lg);

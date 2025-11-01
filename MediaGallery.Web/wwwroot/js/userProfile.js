@@ -7,6 +7,7 @@ const LIGHTGALLERY_PLUGINS = [
 
 const galleryInstances = new WeakMap();
 const plyrPlayers = new WeakMap();
+const carouselRegistry = new WeakMap();
 
 function ensureGallery(element) {
     if (!element || !window.lightGallery) {
@@ -48,6 +49,72 @@ function initPlyr(video) {
     return player;
 }
 
+function initCarousel(carousel) {
+    if (!carousel) {
+        return;
+    }
+
+    if (carouselRegistry.has(carousel)) {
+        const refresh = carouselRegistry.get(carousel);
+        if (typeof refresh === 'function') {
+            requestAnimationFrame(refresh);
+        }
+        return;
+    }
+
+    const viewport = carousel.querySelector('[data-carousel-viewport]');
+    const prev = carousel.querySelector('[data-carousel-prev]');
+    const next = carousel.querySelector('[data-carousel-next]');
+
+    if (!viewport) {
+        return;
+    }
+
+    const scrollByAmount = (direction) => {
+        const amount = Math.max(1, Math.floor(viewport.clientWidth * 0.85));
+        viewport.scrollBy({ left: amount * direction, behavior: 'smooth' });
+    };
+
+    const updateControls = () => {
+        const maxScrollLeft = viewport.scrollWidth - viewport.clientWidth;
+        const tolerance = 4;
+        const atStart = viewport.scrollLeft <= tolerance;
+        const atEnd = viewport.scrollLeft >= maxScrollLeft - tolerance;
+
+        if (prev) {
+            prev.disabled = atStart;
+        }
+
+        if (next) {
+            next.disabled = atEnd;
+        }
+    };
+
+    if (prev) {
+        prev.addEventListener('click', () => scrollByAmount(-1));
+    }
+
+    if (next) {
+        next.addEventListener('click', () => scrollByAmount(1));
+    }
+
+    viewport.addEventListener('scroll', updateControls, { passive: true });
+    window.addEventListener('resize', updateControls, { passive: true });
+
+    viewport.addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowRight') {
+            event.preventDefault();
+            scrollByAmount(1);
+        } else if (event.key === 'ArrowLeft') {
+            event.preventDefault();
+            scrollByAmount(-1);
+        }
+    });
+
+    requestAnimationFrame(updateControls);
+    carouselRegistry.set(carousel, updateControls);
+}
+
 function initUserProfile() {
     const container = document.querySelector('.user-profile');
     if (!container) {
@@ -58,6 +125,9 @@ function initUserProfile() {
     galleryHosts.forEach((host) => {
         ensureGallery(host);
     });
+
+    const carousels = Array.from(container.querySelectorAll('[data-carousel]'));
+    carousels.forEach(initCarousel);
 
     container.querySelectorAll('video').forEach(initPlyr);
 

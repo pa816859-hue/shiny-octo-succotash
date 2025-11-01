@@ -7,6 +7,7 @@ const LIGHTGALLERY_PLUGINS = [
 
 const galleryInstances = new WeakMap();
 const plyrPlayers = new WeakMap();
+const carouselRegistry = new WeakMap();
 
 function combineMediaUrl(root, filePath) {
     if (!filePath) {
@@ -74,6 +75,72 @@ function destroyPlayers(root) {
             plyrPlayers.delete(video);
         }
     });
+}
+
+function initCarousel(carousel) {
+    if (!carousel) {
+        return;
+    }
+
+    if (carouselRegistry.has(carousel)) {
+        const refresh = carouselRegistry.get(carousel);
+        if (typeof refresh === 'function') {
+            requestAnimationFrame(refresh);
+        }
+        return;
+    }
+
+    const viewport = carousel.querySelector('[data-carousel-viewport]');
+    const prev = carousel.querySelector('[data-carousel-prev]');
+    const next = carousel.querySelector('[data-carousel-next]');
+
+    if (!viewport) {
+        return;
+    }
+
+    const scrollByAmount = (direction) => {
+        const amount = Math.max(1, Math.floor(viewport.clientWidth * 0.85));
+        viewport.scrollBy({ left: amount * direction, behavior: 'smooth' });
+    };
+
+    const updateControls = () => {
+        const maxScrollLeft = viewport.scrollWidth - viewport.clientWidth;
+        const tolerance = 4;
+        const atStart = viewport.scrollLeft <= tolerance;
+        const atEnd = viewport.scrollLeft >= maxScrollLeft - tolerance;
+
+        if (prev) {
+            prev.disabled = atStart;
+        }
+
+        if (next) {
+            next.disabled = atEnd;
+        }
+    };
+
+    if (prev) {
+        prev.addEventListener('click', () => scrollByAmount(-1));
+    }
+
+    if (next) {
+        next.addEventListener('click', () => scrollByAmount(1));
+    }
+
+    viewport.addEventListener('scroll', updateControls, { passive: true });
+    window.addEventListener('resize', updateControls, { passive: true });
+
+    viewport.addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowRight') {
+            event.preventDefault();
+            scrollByAmount(1);
+        } else if (event.key === 'ArrowLeft') {
+            event.preventDefault();
+            scrollByAmount(-1);
+        }
+    });
+
+    requestAnimationFrame(updateControls);
+    carouselRegistry.set(carousel, updateControls);
 }
 
 function normalizeTag(tag) {
@@ -253,6 +320,14 @@ function initTagIndex() {
     if (!previewGallery) {
         return;
     }
+
+    const previewCarousel = previewGallery.closest('[data-carousel]') || (previewGallery.matches('[data-carousel]') ? previewGallery : null);
+    const refreshPreviewCarousel = () => {
+        if (previewCarousel) {
+            initCarousel(previewCarousel);
+        }
+    };
+    refreshPreviewCarousel();
 
     function setStatus(message) {
         if (statusElement) {
@@ -546,6 +621,7 @@ function initTagIndex() {
             destroyPlayers(previewGallery);
             destroyGallery(previewGallery);
             previewGallery.innerHTML = '';
+            refreshPreviewCarousel();
             if (previewTitle) {
                 previewTitle.textContent = 'Preview';
             }
@@ -562,6 +638,7 @@ function initTagIndex() {
         destroyPlayers(previewGallery);
         destroyGallery(previewGallery);
         previewGallery.innerHTML = '';
+        refreshPreviewCarousel();
 
         try {
             const payload = await fetchQuery(queryEndpoint, includeTags, excludeTags, pageSize);
@@ -577,6 +654,7 @@ function initTagIndex() {
             if (!items.length) {
                 setStatus('No media found for this query.');
                 updateCardIndicators();
+                refreshPreviewCarousel();
                 return;
             }
 
@@ -588,6 +666,7 @@ function initTagIndex() {
             previewGallery.appendChild(fragment);
             ensureGallery(previewGallery);
             previewGallery.querySelectorAll('video').forEach(initPlyr);
+            refreshPreviewCarousel();
             setStatus(`${items.length} preview item${items.length === 1 ? '' : 's'} loaded.`);
         } catch (error) {
             console.error('Unable to load tag preview', error);
@@ -654,6 +733,7 @@ function initTagIndex() {
         destroyPlayers(previewGallery);
         destroyGallery(previewGallery);
         previewGallery.innerHTML = '';
+        refreshPreviewCarousel();
         if (previewTitle) {
             previewTitle.textContent = 'Preview';
         }
@@ -769,10 +849,15 @@ function initTagDetail() {
     }
 
     containers.forEach((container) => {
-        const gallery = container.querySelector('[data-gallery]');
-        if (gallery) {
+        const galleries = container.querySelectorAll('[data-gallery]');
+        galleries.forEach((gallery) => {
             ensureGallery(gallery);
-        }
+        });
+
+        const carousels = container.querySelectorAll('[data-carousel]');
+        carousels.forEach((carousel) => {
+            initCarousel(carousel);
+        });
     });
 }
 
