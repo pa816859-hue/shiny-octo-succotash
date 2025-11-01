@@ -4,7 +4,8 @@ namespace MediaGallery.Web.Controllers;
 
 internal static class PaginationHelper
 {
-    public const int DefaultPageSizeLimit = 20;
+    public const int DefaultPageSize = 20;
+    public const int MaxPageSizeLimit = 500;
 
     public static bool TryValidate(int pageNumber, int pageSize, out string? errorMessage)
     {
@@ -24,7 +25,7 @@ internal static class PaginationHelper
         return true;
     }
 
-    public static int ClampPageSize(int pageSize, int maxPageSize = DefaultPageSizeLimit)
+    public static int ClampPageSize(int pageSize, int maxPageSize = MaxPageSizeLimit)
     {
         if (maxPageSize < 1)
         {

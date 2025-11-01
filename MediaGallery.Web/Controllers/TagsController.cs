@@ -21,7 +21,7 @@ public class TagsController : Controller
     [HttpGet]
     public async Task<IActionResult> Index(
         [FromQuery] int page = 1,
-        [FromQuery] int pageSize = PaginationHelper.DefaultPageSizeLimit,
+        [FromQuery] int pageSize = PaginationHelper.DefaultPageSize,
         [FromQuery] long? userId = null,
         CancellationToken cancellationToken = default)
     {
@@ -43,7 +43,7 @@ public class TagsController : Controller
     [HttpGet]
     public async Task<IActionResult> IndexData(
         [FromQuery] int page = 1,
-        [FromQuery] int pageSize = PaginationHelper.DefaultPageSizeLimit,
+        [FromQuery] int pageSize = PaginationHelper.DefaultPageSize,
         [FromQuery] long? userId = null,
         CancellationToken cancellationToken = default)
     {
@@ -71,7 +71,7 @@ public class TagsController : Controller
     public async Task<IActionResult> Detail(
         string? tag,
         [FromQuery] int page = 1,
-        [FromQuery] int pageSize = PaginationHelper.DefaultPageSizeLimit,
+        [FromQuery] int pageSize = PaginationHelper.DefaultPageSize,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(tag))
@@ -101,7 +101,7 @@ public class TagsController : Controller
     public async Task<IActionResult> DetailData(
         string? tag,
         [FromQuery] int page = 1,
-        [FromQuery] int pageSize = PaginationHelper.DefaultPageSizeLimit,
+        [FromQuery] int pageSize = PaginationHelper.DefaultPageSize,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(tag))

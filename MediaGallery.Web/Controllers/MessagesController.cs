@@ -20,7 +20,7 @@ public class MessagesController : Controller
     [HttpGet]
     public async Task<IActionResult> Recent(
         [FromQuery] int page = 1,
-        [FromQuery] int pageSize = PaginationHelper.DefaultPageSizeLimit,
+        [FromQuery] int pageSize = PaginationHelper.DefaultPageSize,
         [FromQuery] long? channelId = null,
         [FromQuery] long? userId = null,
         [FromQuery] bool mediaOnly = false,
@@ -40,7 +40,7 @@ public class MessagesController : Controller
     [HttpGet]
     public async Task<IActionResult> RecentData(
         [FromQuery] int page = 1,
-        [FromQuery] int pageSize = PaginationHelper.DefaultPageSizeLimit,
+        [FromQuery] int pageSize = PaginationHelper.DefaultPageSize,
         [FromQuery] long? channelId = null,
         [FromQuery] long? userId = null,
         [FromQuery] bool mediaOnly = false,
