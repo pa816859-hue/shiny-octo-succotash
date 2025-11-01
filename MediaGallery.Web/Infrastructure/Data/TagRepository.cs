@@ -32,25 +32,48 @@ FROM TagCounts
 ORDER BY PhotoCount DESC, Tag ASC
 OFFSET @Offset ROWS FETCH NEXT @Limit ROWS ONLY;";
 
-    private const string TagDetailQuery = @"SELECT pt.Tag,
-       pt.PhotoID,
-       p.FilePath AS PhotoPath,
-       p.AddedOn,
-       pt.Score,
-       m.MessageID,
-       m.ChannelID,
-       m.SentDate,
-       m.MessageText,
-       m.UserID,
-       n.Username,
-       n.FirstName,
-       n.LastName
-FROM dbo.PhotoTags AS pt
-JOIN dbo.Photos AS p ON p.PhotoID = pt.PhotoID
-LEFT JOIN dbo.Messages AS m ON m.PhotoID = pt.PhotoID
-LEFT JOIN dbo.UserNames AS n ON n.UserID = m.UserID
-WHERE pt.Tag = @Tag
-ORDER BY pt.Score DESC, p.AddedOn DESC, pt.PhotoID DESC
+    private const string TagDetailQuery = @"WITH TagPhotos AS (
+    SELECT pt.Tag,
+           pt.PhotoID,
+           p.FilePath AS PhotoPath,
+           p.AddedOn,
+           pt.Score,
+           ROW_NUMBER() OVER (PARTITION BY pt.PhotoID ORDER BY pt.Score DESC, p.AddedOn DESC, pt.PhotoID DESC) AS PhotoRank
+    FROM dbo.PhotoTags AS pt
+    JOIN dbo.Photos AS p ON p.PhotoID = pt.PhotoID
+    WHERE pt.Tag = @Tag
+)
+SELECT tp.Tag,
+       tp.PhotoID,
+       tp.PhotoPath,
+       tp.AddedOn,
+       tp.Score,
+       md.MessageID,
+       md.ChannelID,
+       md.SentDate,
+       md.MessageText,
+       md.UserID,
+       md.Username,
+       md.FirstName,
+       md.LastName
+FROM TagPhotos AS tp
+OUTER APPLY (
+    SELECT TOP (1)
+           m.MessageID,
+           m.ChannelID,
+           m.SentDate,
+           m.MessageText,
+           m.UserID,
+           n.Username,
+           n.FirstName,
+           n.LastName
+    FROM dbo.Messages AS m
+    LEFT JOIN dbo.UserNames AS n ON n.UserID = m.UserID
+    WHERE m.PhotoID = tp.PhotoID
+    ORDER BY m.SentDate DESC, m.MessageID DESC
+) AS md
+WHERE tp.PhotoRank = 1
+ORDER BY tp.Score DESC, tp.AddedOn DESC, tp.PhotoID DESC
 OFFSET @Offset ROWS FETCH NEXT @Limit ROWS ONLY;";
 
     public TagRepository(IDbConnectionFactory connectionFactory, ISqlCommandExecutor commandExecutor)
