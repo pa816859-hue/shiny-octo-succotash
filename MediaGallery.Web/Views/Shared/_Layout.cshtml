@@ -32,11 +32,14 @@
                     <li><a class="@NavLinkClass("Home", "Index")" asp-area="" asp-controller="Home" asp-action="Index">Home</a></li>
                     <li><a class="@NavLinkClass("Messages", "Recent")" asp-area="" asp-controller="Messages" asp-action="Recent">Messages</a></li>
                     <li><a class="@NavLinkClass("Tags", "Index")" asp-area="" asp-controller="Tags" asp-action="Index">Tags</a></li>
+                    <li><a class="@NavLinkClass("Photos", "Feed")" asp-area="" asp-controller="Photos" asp-action="Feed">Photo feed</a></li>
                     <li><a class="@NavLinkClass("Videos", "Watch")" asp-area="" asp-controller="Videos" asp-action="Watch">TikTok mode</a></li>
                     <li><a class="@NavLinkClass("Home", "Privacy")" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a></li>
                 </ul>
                 <div class="app-nav__actions">
                     <a class="btn btn-ghost" asp-controller="Messages" asp-action="Recent">Live feed</a>
+                    <a class="btn btn-outline" asp-controller="Photos" asp-action="Liked">Liked photos</a>
+                    <a class="btn btn-ghost" asp-controller="Photos" asp-action="Feed">Photo feed</a>
                     <a class="btn btn-outline" asp-controller="Videos" asp-action="Liked">Liked videos</a>
                     <a class="btn btn-primary" asp-controller="Videos" asp-action="Watch">TikTok mode</a>
                 </div>

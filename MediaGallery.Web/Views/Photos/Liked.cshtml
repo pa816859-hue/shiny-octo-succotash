@@ -1,0 +1,217 @@
+@model PhotoLikedListViewModel
+@{
+    ViewData["Title"] = "Liked photos";
+}
+
+<section class="photo-liked" data-unlike-url="@Url.Action("Unlike", "Photos")">
+    <header class="photo-liked__header">
+        <h1 class="photo-liked__title">Liked photos</h1>
+        <p class="photo-liked__subtitle">Every snapshot you've hearted while scrolling through the random feed.</p>
+        <div class="photo-liked__actions">
+            <a class="btn btn-primary" asp-action="Feed" asp-controller="Photos">Back to photo feed</a>
+        </div>
+        <div class="photo-liked__summary" data-liked-summary>
+            <span class="photo-liked__count" data-liked-count>
+                <strong>@Model.TotalPhotos</strong> liked @(Model.TotalPhotos == 1 ? "photo" : "photos")
+            </span>
+            <span class="photo-liked__hint">Likes are stored on this device so you can revisit favourites quickly.</span>
+        </div>
+    </header>
+
+    <div class="photo-liked__toast" role="status" aria-live="polite" hidden></div>
+
+    @if (!Model.HasPhotos)
+    {
+        <div class="photo-liked__empty">
+            <p>You haven't liked any photos yet. Jump back into the feed and tap the heart to build this list.</p>
+        </div>
+    }
+    else
+    {
+        <div class="photo-liked__grid" data-liked-grid>
+            @foreach (var photo in Model.Photos)
+            {
+                <article class="photo-liked__item" data-photo-id="@photo.PhotoId">
+                    <div class="photo-liked__frame">
+                        <button type="button" class="photo-liked__remove" data-role="unlike-button" aria-label="Remove like for photo @photo.PhotoId">
+                            <span aria-hidden="true">✕</span>
+                        </button>
+                        <img src="@photo.SourceUrl" alt="Photo @photo.PhotoId" loading="lazy" />
+                    </div>
+                    <div class="photo-liked__meta">
+                        <span class="photo-liked__id">Photo #@photo.PhotoId</span>
+                        <span class="photo-liked__timestamp">Added @photo.AddedOn.ToString("g")</span>
+                        <div class="photo-liked__item-actions">
+                            <button type="button" class="btn btn-ghost btn-sm" data-role="unlike-button">
+                                <span aria-hidden="true">💔</span>
+                                <span>Remove like</span>
+                            </button>
+                            <a class="btn btn-outline btn-sm" href="@photo.SourceUrl" target="_blank" rel="noopener">
+                                <span aria-hidden="true">⤢</span>
+                                <span>Open original</span>
+                            </a>
+                            <a class="btn btn-outline btn-sm" asp-controller="Messages" asp-action="MediaChronology" asp-route-photoId="@photo.PhotoId">
+                                <span aria-hidden="true">🕑</span>
+                                <span>View chronology</span>
+                            </a>
+                        </div>
+                    </div>
+                </article>
+            }
+        </div>
+    }
+</section>
+
+<form id="photoLikedActionsForm" method="post">
+    @Html.AntiForgeryToken()
+</form>
+
+@section Scripts {
+    <script>
+        (() => {
+            const container = document.querySelector('.photo-liked');
+            if (!container) {
+                return;
+            }
+
+            const unlikeUrl = container.dataset.unlikeUrl;
+            const grid = container.querySelector('[data-liked-grid]');
+            const emptyState = container.querySelector('.photo-liked__empty');
+            const summary = container.querySelector('[data-liked-summary]');
+            const countTarget = container.querySelector('[data-liked-count]');
+            const toast = container.querySelector('.photo-liked__toast');
+            const tokenInput = document.querySelector('#photoLikedActionsForm input[name="__RequestVerificationToken"]');
+            const antiForgeryToken = tokenInput ? tokenInput.value : '';
+            let toastTimeoutId = null;
+
+            const setCount = (count) => {
+                if (!summary || !countTarget) {
+                    return;
+                }
+
+                const label = count === 1 ? 'liked photo' : 'liked photos';
+                countTarget.innerHTML = `<strong>${count}</strong> ${label}`;
+            };
+
+            if (!grid && summary) {
+                summary.hidden = true;
+            }
+
+            if (grid && emptyState) {
+                emptyState.hidden = grid.querySelectorAll('[data-photo-id]').length > 0;
+            }
+
+            if (grid) {
+                setCount(grid.querySelectorAll('[data-photo-id]').length);
+            }
+
+            const showToast = (message, state) => {
+                if (!toast) {
+                    return;
+                }
+
+                toast.textContent = message;
+                toast.dataset.state = state || '';
+                toast.hidden = !message;
+
+                if (message) {
+                    if (toastTimeoutId) {
+                        window.clearTimeout(toastTimeoutId);
+                    }
+
+                    toastTimeoutId = window.setTimeout(() => {
+                        toast.hidden = true;
+                        toast.textContent = '';
+                        toast.dataset.state = '';
+                        toastTimeoutId = null;
+                    }, 2800);
+                }
+            };
+
+            const removeCard = (card) => {
+                if (!card) {
+                    return;
+                }
+
+                card.classList.add('is-removing');
+                window.setTimeout(() => {
+                    card.remove();
+                    const remaining = grid ? grid.querySelectorAll('[data-photo-id]').length : 0;
+                    setCount(remaining);
+
+                    if (remaining === 0) {
+                        if (grid) {
+                            grid.hidden = true;
+                        }
+                        if (summary) {
+                            summary.hidden = true;
+                        }
+                        if (emptyState) {
+                            emptyState.hidden = false;
+                        } else {
+                            const fallback = document.createElement('div');
+                            fallback.className = 'photo-liked__empty';
+                            fallback.textContent = 'You have no liked photos yet.';
+                            container.appendChild(fallback);
+                        }
+                    }
+                }, 220);
+            };
+
+            const sendUnlike = async (photoId) => {
+                if (!unlikeUrl) {
+                    return false;
+                }
+
+                try {
+                    const response = await fetch(unlikeUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'RequestVerificationToken': antiForgeryToken
+                        },
+                        body: JSON.stringify({ photoId: Number(photoId) })
+                    });
+
+                    if (!response.ok) {
+                        return false;
+                    }
+
+                    const payload = await response.json();
+                    return Boolean(payload && payload.removed);
+                } catch (error) {
+                    console.error('Failed to remove like', error);
+                    return false;
+                }
+            };
+
+            const handleUnlike = async (event) => {
+                const button = event.target.closest('[data-role="unlike-button"]');
+                if (!button) {
+                    return;
+                }
+
+                event.preventDefault();
+                const card = button.closest('[data-photo-id]');
+                if (!card) {
+                    return;
+                }
+
+                const photoId = card.dataset.photoId;
+                button.classList.add('is-busy');
+                const removed = await sendUnlike(photoId);
+                button.classList.remove('is-busy');
+
+                if (!removed) {
+                    showToast('Could not remove like. Please try again.', 'error');
+                    return;
+                }
+
+                removeCard(card);
+                showToast('Like removed.', 'success');
+            };
+
+            grid?.addEventListener('click', handleUnlike);
+        })();
+    </script>
+}
