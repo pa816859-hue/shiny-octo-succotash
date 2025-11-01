@@ -12,5 +12,7 @@ public sealed class VideoLikedListViewModel
 
     public IReadOnlyList<VideoPlaybackViewModel> Videos { get; }
 
-    public bool HasVideos => Videos.Count > 0;
+    public int TotalVideos => Videos.Count;
+
+    public bool HasVideos => TotalVideos > 0;
 }

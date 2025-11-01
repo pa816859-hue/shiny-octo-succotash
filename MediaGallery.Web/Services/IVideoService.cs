@@ -13,5 +13,7 @@ public interface IVideoService
 
     Task<VideoPlaybackModel?> LikeAsync(long videoId, CancellationToken cancellationToken = default);
 
+    Task<bool> RemoveLikeAsync(long videoId, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<VideoPlaybackModel>> GetLikedVideosAsync(CancellationToken cancellationToken = default);
 }

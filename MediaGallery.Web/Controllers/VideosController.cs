@@ -66,6 +66,19 @@ public class VideosController : Controller
         return Json(CreateResponse(viewModel));
     }
 
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Unlike([FromBody] VideoActionRequest request, CancellationToken cancellationToken)
+    {
+        if (request is null || request.VideoId <= 0)
+        {
+            return BadRequest(new { error = "Video id must be provided." });
+        }
+
+        var removed = await _videoService.RemoveLikeAsync(request.VideoId, cancellationToken).ConfigureAwait(false);
+        return Json(new { removed });
+    }
+
     private static VideoPlaybackViewModel? ToViewModel(VideoPlaybackModel? model)
     {
         if (model is null)

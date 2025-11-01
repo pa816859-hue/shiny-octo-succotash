@@ -13,4 +13,6 @@ public interface IVideoStateStore
     Task AddWatchedVideoIdAsync(long videoId, CancellationToken cancellationToken = default);
 
     Task AddLikedVideoIdAsync(long videoId, CancellationToken cancellationToken = default);
+
+    Task<bool> RemoveLikedVideoIdAsync(long videoId, CancellationToken cancellationToken = default);
 }

@@ -92,6 +92,16 @@ public class VideoService : IVideoService
         return await GetNextVideoAsync(cancellationToken).ConfigureAwait(false);
     }
 
+    public Task<bool> RemoveLikeAsync(long videoId, CancellationToken cancellationToken = default)
+    {
+        if (videoId <= 0)
+        {
+            return Task.FromResult(false);
+        }
+
+        return _stateStore.RemoveLikedVideoIdAsync(videoId, cancellationToken);
+    }
+
     public async Task<IReadOnlyList<VideoPlaybackModel>> GetLikedVideosAsync(CancellationToken cancellationToken = default)
     {
         var mediaRoot = _mediaOptions.CurrentValue.RootDirectory;
@@ -115,6 +125,8 @@ public class VideoService : IVideoService
             .Select(video => CreatePlaybackModel(video, mediaRoot, likedSet))
             .Where(model => model is not null)
             .Select(model => model!)
+            .OrderByDescending(model => model.AddedOn)
+            .ThenByDescending(model => model.VideoId)
             .ToList();
     }
 

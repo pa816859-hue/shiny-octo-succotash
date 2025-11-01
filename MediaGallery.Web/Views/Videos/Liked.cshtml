@@ -3,14 +3,22 @@
     ViewData["Title"] = "Liked videos";
 }
 
-<section class="video-liked">
+<section class="video-liked" data-unlike-url="@Url.Action("Unlike", "Videos")">
     <header class="video-liked__header">
         <h1 class="video-liked__title">Liked videos</h1>
         <p class="video-liked__subtitle">Every clip you've hearted while scrolling through TikTok mode.</p>
         <div class="video-liked__actions">
             <a class="btn btn-primary" asp-action="Watch" asp-controller="Videos">Back to TikTok mode</a>
         </div>
+        <div class="video-liked__summary" data-liked-summary>
+            <span class="video-liked__count" data-liked-count>
+                <strong>@Model.TotalVideos</strong> liked @(Model.TotalVideos == 1 ? "video" : "videos")
+            </span>
+            <span class="video-liked__hint">Likes are stored on this device so you can quickly revisit favorites.</span>
+        </div>
     </header>
+
+    <div class="video-liked__toast" role="status" aria-live="polite" hidden></div>
 
     @if (!Model.HasVideos)
     {
@@ -20,19 +28,186 @@
     }
     else
     {
-        <div class="video-liked__grid">
+        <div class="video-liked__grid" data-liked-grid>
             @foreach (var video in Model.Videos)
             {
-                <article class="video-liked__item">
+                <article class="video-liked__item" data-video-id="@video.VideoId">
                     <div class="video-liked__player">
+                        <button type="button" class="video-liked__remove" data-role="unlike-button" aria-label="Remove like for video @video.VideoId">
+                            <span aria-hidden="true">✕</span>
+                        </button>
                         <video src="@video.SourceUrl" controls playsinline></video>
                     </div>
                     <div class="video-liked__meta">
                         <span class="video-liked__id">Video #@video.VideoId</span>
                         <span class="video-liked__timestamp">Added @video.AddedOn.ToString("g")</span>
+                        <div class="video-liked__item-actions">
+                            <button type="button" class="btn btn-ghost btn-sm" data-role="unlike-button">
+                                <span aria-hidden="true">💔</span>
+                                <span>Remove like</span>
+                            </button>
+                            <a class="btn btn-outline btn-sm" href="@video.SourceUrl" target="_blank" rel="noopener">
+                                <span aria-hidden="true">⤢</span>
+                                <span>Open original</span>
+                            </a>
+                        </div>
                     </div>
                 </article>
             }
         </div>
     }
 </section>
+
+<form id="likedActionsForm" method="post">
+    @Html.AntiForgeryToken()
+</form>
+
+@section Scripts {
+    <script>
+        (() => {
+            const container = document.querySelector('.video-liked');
+            if (!container) {
+                return;
+            }
+
+            const unlikeUrl = container.dataset.unlikeUrl;
+            const grid = container.querySelector('[data-liked-grid]');
+            const emptyState = container.querySelector('.video-liked__empty');
+            const summary = container.querySelector('[data-liked-summary]');
+            const countTarget = container.querySelector('[data-liked-count]');
+            const toast = container.querySelector('.video-liked__toast');
+            const tokenInput = document.querySelector('#likedActionsForm input[name="__RequestVerificationToken"]');
+            const antiForgeryToken = tokenInput ? tokenInput.value : '';
+            let toastTimeoutId = null;
+
+            const setCount = (count) => {
+                if (!summary || !countTarget) {
+                    return;
+                }
+
+                const label = count === 1 ? 'liked video' : 'liked videos';
+                countTarget.innerHTML = `<strong>${count}</strong> ${label}`;
+            };
+
+            if (!grid && summary) {
+                summary.hidden = true;
+            }
+
+            if (grid && emptyState) {
+                emptyState.hidden = grid.querySelectorAll('[data-video-id]').length > 0;
+            }
+
+            if (grid) {
+                setCount(grid.querySelectorAll('[data-video-id]').length);
+            }
+
+            const showToast = (message, state) => {
+                if (!toast) {
+                    return;
+                }
+
+                toast.textContent = message;
+                toast.dataset.state = state || '';
+                toast.hidden = !message;
+
+                if (message) {
+                    if (toastTimeoutId) {
+                        window.clearTimeout(toastTimeoutId);
+                    }
+
+                    toastTimeoutId = window.setTimeout(() => {
+                        toast.hidden = true;
+                        toast.textContent = '';
+                        toast.dataset.state = '';
+                        toastTimeoutId = null;
+                    }, 2800);
+                }
+            };
+
+            const removeCard = (card) => {
+                if (!card) {
+                    return;
+                }
+
+                card.classList.add('is-removing');
+                window.setTimeout(() => {
+                    card.remove();
+                    const remaining = grid ? grid.querySelectorAll('[data-video-id]').length : 0;
+                    setCount(remaining);
+
+                    if (remaining === 0) {
+                        if (grid) {
+                            grid.hidden = true;
+                        }
+                        if (summary) {
+                            summary.hidden = true;
+                        }
+                        if (emptyState) {
+                            emptyState.hidden = false;
+                        } else {
+                            const fallback = document.createElement('div');
+                            fallback.className = 'video-liked__empty';
+                            fallback.textContent = 'You have no liked videos yet.';
+                            container.appendChild(fallback);
+                        }
+                    }
+                }, 220);
+            };
+
+            const sendUnlike = async (videoId) => {
+                if (!unlikeUrl) {
+                    return false;
+                }
+
+                try {
+                    const response = await fetch(unlikeUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'RequestVerificationToken': antiForgeryToken
+                        },
+                        body: JSON.stringify({ videoId: Number(videoId) })
+                    });
+
+                    if (!response.ok) {
+                        return false;
+                    }
+
+                    const payload = await response.json();
+                    return Boolean(payload && payload.removed);
+                } catch (error) {
+                    console.error('Failed to remove like', error);
+                    return false;
+                }
+            };
+
+            grid?.addEventListener('click', async (event) => {
+                const target = event.target instanceof HTMLElement ? event.target : null;
+                const button = target?.closest('[data-role="unlike-button"]');
+                if (!(button instanceof HTMLElement) || button.tagName !== 'BUTTON') {
+                    return;
+                }
+
+                const card = button.closest('[data-video-id]');
+                const videoId = card ? card.getAttribute('data-video-id') : '';
+                if (!videoId) {
+                    return;
+                }
+
+                button.setAttribute('disabled', 'disabled');
+                button.classList.add('is-busy');
+
+                const removed = await sendUnlike(videoId);
+                if (!removed) {
+                    showToast('Could not remove like. Please try again.', 'error');
+                    button.classList.remove('is-busy');
+                    button.removeAttribute('disabled');
+                    return;
+                }
+
+                showToast('Removed from liked videos.', 'success');
+                removeCard(card);
+            });
+        })();
+    </script>
+}

@@ -38,6 +38,9 @@ public class VideoStateStore : IVideoStateStore
     public Task AddLikedVideoIdAsync(long videoId, CancellationToken cancellationToken = default)
         => AddIdAsync(GetLikedFilePath(), videoId, cancellationToken);
 
+    public Task<bool> RemoveLikedVideoIdAsync(long videoId, CancellationToken cancellationToken = default)
+        => RemoveIdAsync(GetLikedFilePath(), videoId, cancellationToken);
+
     private async Task<HashSet<long>> ReadIdsAsync(string filePath, CancellationToken cancellationToken)
     {
         await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -87,6 +90,68 @@ public class VideoStateStore : IVideoStateStore
 
             var line = videoId.ToString(CultureInfo.InvariantCulture) + Environment.NewLine;
             await File.AppendAllTextAsync(filePath, line, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
+    }
+
+    private async Task<bool> RemoveIdAsync(string filePath, long videoId, CancellationToken cancellationToken)
+    {
+        if (videoId <= 0)
+        {
+            return false;
+        }
+
+        await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (!File.Exists(filePath))
+            {
+                return false;
+            }
+
+            var lines = await File.ReadAllLinesAsync(filePath, cancellationToken).ConfigureAwait(false);
+            if (lines.Length == 0)
+            {
+                return false;
+            }
+
+            var updated = new List<string>(lines.Length);
+            var removed = false;
+
+            foreach (var line in lines)
+            {
+                if (!long.TryParse(line, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) || parsed <= 0)
+                {
+                    continue;
+                }
+
+                if (!removed && parsed == videoId)
+                {
+                    removed = true;
+                    continue;
+                }
+
+                updated.Add(parsed.ToString(CultureInfo.InvariantCulture));
+            }
+
+            if (!removed)
+            {
+                return false;
+            }
+
+            if (updated.Count == 0)
+            {
+                File.Delete(filePath);
+            }
+            else
+            {
+                await File.WriteAllLinesAsync(filePath, updated, cancellationToken).ConfigureAwait(false);
+            }
+
+            return true;
         }
         finally
         {
