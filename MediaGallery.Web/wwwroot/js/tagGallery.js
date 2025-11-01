@@ -76,6 +76,63 @@ function destroyPlayers(root) {
     });
 }
 
+function normalizeTag(tag) {
+    return (tag || '').trim().toLowerCase();
+}
+
+function buildQueryLabel(includes, excludes) {
+    const includeText = (includes || [])
+        .filter((tag) => tag)
+        .map((tag) => `+${tag}`)
+        .join(', ');
+    const excludeText = (excludes || [])
+        .filter((tag) => tag)
+        .map((tag) => `-${tag}`)
+        .join(', ');
+
+    if (includeText && excludeText) {
+        return `${includeText} ${excludeText}`;
+    }
+
+    if (includeText) {
+        return includeText;
+    }
+
+    if (excludeText) {
+        return excludeText;
+    }
+
+    return 'Preview';
+}
+
+function renderChipList(container, tags, type) {
+    if (!container) {
+        return;
+    }
+
+    container.innerHTML = '';
+    (tags || []).forEach((tag) => {
+        if (!tag) {
+            return;
+        }
+
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = `tag-chip tag-chip--${type}`;
+        chip.dataset.tag = tag;
+        chip.dataset.action = `remove-${type}`;
+        const symbol = document.createElement('span');
+        symbol.className = 'tag-chip__symbol';
+        symbol.textContent = type === 'include' ? '+' : '−';
+        const label = document.createElement('span');
+        label.className = 'tag-chip__label';
+        label.textContent = tag;
+        chip.appendChild(symbol);
+        chip.appendChild(label);
+        container.appendChild(chip);
+    });
+}
+
 function createPreviewCard(item, mediaRoot) {
     const card = document.createElement('article');
     card.className = 'media-card';
@@ -136,13 +193,24 @@ function createPreviewCard(item, mediaRoot) {
     return card;
 }
 
-async function fetchPreview(endpoint, tag, pageSize) {
-    if (!endpoint || !tag) {
+async function fetchQuery(endpoint, includeTags, excludeTags, pageSize) {
+    if (!endpoint) {
         return null;
     }
 
     const url = new URL(endpoint, window.location.origin);
-    url.searchParams.set('tag', tag);
+    (includeTags || []).forEach((tag) => {
+        if (tag) {
+            url.searchParams.append('include', tag);
+        }
+    });
+
+    (excludeTags || []).forEach((tag) => {
+        if (tag) {
+            url.searchParams.append('exclude', tag);
+        }
+    });
+
     if (pageSize) {
         url.searchParams.set('pageSize', String(pageSize));
     }
@@ -164,10 +232,13 @@ function initTagIndex() {
     const previewGallery = container.querySelector('[data-preview-gallery]');
     const previewTitle = container.querySelector('[data-preview-title]');
     const statusElement = container.querySelector('[data-scroll-status]');
+    const includeList = container.querySelector('[data-include-list]');
+    const excludeList = container.querySelector('[data-exclude-list]');
+    const searchInput = container.querySelector('[data-tag-search]');
+    const tagCount = container.querySelector('[data-tag-count]');
     const mediaRoot = container.dataset.mediaRoot || document.body.dataset.mediaRoot || '';
-    const endpoint = container.dataset.detailEndpoint;
+    const queryEndpoint = container.dataset.queryEndpoint;
     const pageSize = Number(container.dataset.previewPageSize || '6');
-    const initialTag = container.dataset.initialTag;
 
     if (!previewGallery) {
         return;
@@ -179,9 +250,79 @@ function initTagIndex() {
         }
     }
 
-    async function renderPreview(tag) {
-        if (!tag) {
-            setStatus('Select a tag to load preview media.');
+    const queryState = {
+        include: [],
+        exclude: []
+    };
+
+    let currentPreview = {
+        include: [],
+        exclude: []
+    };
+
+    function getCards() {
+        return Array.from(container.querySelectorAll('.tag-card'));
+    }
+
+    function updateCardIndicators() {
+        const includeSet = new Set(queryState.include.map((tag) => normalizeTag(tag)));
+        const excludeSet = new Set(queryState.exclude.map((tag) => normalizeTag(tag)));
+        const activeIncludeSet = new Set((currentPreview.include || []).map((tag) => normalizeTag(tag)));
+        const activeExcludeSet = new Set((currentPreview.exclude || []).map((tag) => normalizeTag(tag)));
+
+        getCards().forEach((card) => {
+            const tagValue = normalizeTag(card.dataset.tag);
+            card.classList.toggle('is-included', includeSet.has(tagValue));
+            card.classList.toggle('is-excluded', excludeSet.has(tagValue));
+            const isActive = activeIncludeSet.has(tagValue) || activeExcludeSet.has(tagValue);
+            card.classList.toggle('is-active', isActive);
+        });
+    }
+
+    function updateTagCountDisplay() {
+        if (!tagCount) {
+            return;
+        }
+
+        const visibleCount = getCards().filter((card) => !card.hidden).length;
+        tagCount.textContent = `${visibleCount} tag${visibleCount === 1 ? '' : 's'}`;
+    }
+
+    function applySearchFilter(term) {
+        const normalizedTerm = (term || '').trim().toLowerCase();
+        getCards().forEach((card) => {
+            const matches = !normalizedTerm || normalizeTag(card.dataset.tag).includes(normalizedTerm);
+            card.hidden = !matches;
+        });
+
+        updateTagCountDisplay();
+    }
+
+    async function runQuery(options = {}) {
+        const { include, exclude, label } = options;
+        const includeTags = Array.isArray(include) ? include : queryState.include;
+        const excludeTags = Array.isArray(exclude) ? exclude : queryState.exclude;
+
+        currentPreview = {
+            include: [...includeTags],
+            exclude: [...excludeTags]
+        };
+
+        updateCardIndicators();
+
+        if (!includeTags.length && !excludeTags.length) {
+            destroyPlayers(previewGallery);
+            destroyGallery(previewGallery);
+            previewGallery.innerHTML = '';
+            if (previewTitle) {
+                previewTitle.textContent = 'Preview';
+            }
+            setStatus('Add tags to the query or preview a tag to see media here.');
+            return;
+        }
+
+        if (!queryEndpoint) {
+            setStatus('Query endpoint is not available.');
             return;
         }
 
@@ -190,23 +331,21 @@ function initTagIndex() {
         destroyGallery(previewGallery);
         previewGallery.innerHTML = '';
 
-        container.querySelectorAll('.tag-card').forEach((card) => {
-            card.classList.toggle('is-active', card.dataset.tag === tag);
-        });
-
         try {
-            const payload = await fetchPreview(endpoint, tag, pageSize);
+            const payload = await fetchQuery(queryEndpoint, includeTags, excludeTags, pageSize);
             const items = payload?.photos?.items || [];
-            if (!items.length) {
-                setStatus('No preview media available for this tag.');
-                if (previewTitle) {
-                    previewTitle.textContent = `Preview · ${tag}`;
-                }
-                return;
-            }
+            const responseIncludes = payload?.includes || includeTags;
+            const responseExcludes = payload?.excludes || excludeTags;
 
             if (previewTitle) {
-                previewTitle.textContent = `Preview · ${tag}`;
+                const titleLabel = label || buildQueryLabel(responseIncludes, responseExcludes);
+                previewTitle.textContent = titleLabel;
+            }
+
+            if (!items.length) {
+                setStatus('No media found for this query.');
+                updateCardIndicators();
+                return;
             }
 
             const fragment = document.createDocumentFragment();
@@ -220,20 +359,135 @@ function initTagIndex() {
             setStatus(`${items.length} preview item${items.length === 1 ? '' : 's'} loaded.`);
         } catch (error) {
             console.error('Unable to load tag preview', error);
-            setStatus('Unable to load preview for this tag.');
+            setStatus('Unable to load preview for this query.');
         }
     }
 
-    container.querySelectorAll('[data-action="preview-tag"]').forEach((button) => {
-        button.addEventListener('click', () => {
-            const tag = button.dataset.tag;
-            renderPreview(tag);
-        });
+    function renderQueryState() {
+        renderChipList(includeList, queryState.include, 'include');
+        renderChipList(excludeList, queryState.exclude, 'exclude');
+        updateCardIndicators();
+    }
+
+    function addTagToQuery(type, tag) {
+        if (!tag) {
+            return;
+        }
+
+        const normalized = normalizeTag(tag);
+        if (!normalized) {
+            return;
+        }
+
+        const target = queryState[type];
+        if (target.some((value) => normalizeTag(value) === normalized)) {
+            return;
+        }
+
+        const oppositeType = type === 'include' ? 'exclude' : 'include';
+        const opposite = queryState[oppositeType].filter((value) => normalizeTag(value) !== normalized);
+
+        queryState[type] = [...target, tag];
+        queryState[oppositeType] = opposite;
+        renderQueryState();
+        runQuery();
+    }
+
+    function removeTagFromQuery(type, tag) {
+        if (!tag) {
+            return;
+        }
+
+        const normalized = normalizeTag(tag);
+        const updated = queryState[type].filter((value) => normalizeTag(value) !== normalized);
+        if (updated.length === queryState[type].length) {
+            return;
+        }
+
+        queryState[type] = updated;
+        renderQueryState();
+        runQuery();
+    }
+
+    function resetQuery() {
+        currentPreview = { include: [], exclude: [] };
+        queryState.include = [];
+        queryState.exclude = [];
+        renderQueryState();
+        destroyPlayers(previewGallery);
+        destroyGallery(previewGallery);
+        previewGallery.innerHTML = '';
+        if (previewTitle) {
+            previewTitle.textContent = 'Preview';
+        }
+        setStatus('Add tags to the query or preview a tag to see media here.');
+    }
+
+    container.addEventListener('click', (event) => {
+        const target = event.target instanceof HTMLElement ? event.target.closest('[data-action]') : null;
+        if (!target) {
+            return;
+        }
+
+        const tag = target.dataset.tag;
+        switch (target.dataset.action) {
+            case 'preview-tag':
+                runQuery({ include: tag ? [tag] : [], exclude: [], label: tag ? `Preview · ${tag}` : undefined });
+                break;
+            case 'include-tag':
+                addTagToQuery('include', tag);
+                break;
+            case 'exclude-tag':
+                addTagToQuery('exclude', tag);
+                break;
+            case 'run-query':
+                runQuery();
+                break;
+            case 'reset-query':
+                resetQuery();
+                break;
+            default:
+                break;
+        }
     });
 
-    if (initialTag) {
-        renderPreview(initialTag);
+    if (includeList) {
+        includeList.addEventListener('click', (event) => {
+            const target = event.target instanceof HTMLElement ? event.target.closest('[data-action]') : null;
+            if (!target) {
+                return;
+            }
+
+            if (target.dataset.action === 'remove-include') {
+                removeTagFromQuery('include', target.dataset.tag);
+            }
+        });
     }
+
+    if (excludeList) {
+        excludeList.addEventListener('click', (event) => {
+            const target = event.target instanceof HTMLElement ? event.target.closest('[data-action]') : null;
+            if (!target) {
+                return;
+            }
+
+            if (target.dataset.action === 'remove-exclude') {
+                removeTagFromQuery('exclude', target.dataset.tag);
+            }
+        });
+    }
+
+    if (searchInput) {
+        const handleSearch = (event) => {
+            applySearchFilter(event.target.value);
+        };
+
+        searchInput.addEventListener('input', handleSearch);
+        searchInput.addEventListener('search', handleSearch);
+    }
+
+    renderQueryState();
+    applySearchFilter(searchInput ? searchInput.value : '');
 }
 
 function initTagDetail() {

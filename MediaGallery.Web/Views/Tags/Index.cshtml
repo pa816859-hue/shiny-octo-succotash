@@ -36,7 +36,6 @@
         return Url.Action("Index", "Tags", parameters) ?? string.Empty;
     }
 
-    var initialTag = Model.Tags.FirstOrDefault()?.Tag;
 }
 
 <section class="page-header">
@@ -60,8 +59,14 @@
     </div>
 </form>
 
-<section class="tag-browser" data-tag-view="index" data-media-root="@Url.Content("~/media/")" data-detail-endpoint="@Url.Action("DetailData", "Tags")" data-preview-page-size="8" data-initial-tag="@initialTag">
+<section class="tag-browser" data-tag-view="index" data-media-root="@Url.Content("~/media/")" data-detail-endpoint="@Url.Action("DetailData", "Tags")" data-query-endpoint="@Url.Action("QueryData", "Tags")" data-preview-page-size="8">
     <div class="tag-browser__list" data-tag-list aria-label="Available tags">
+        <div class="tag-browser__controls">
+            <label class="sr-only" for="tagSearch">Search tags</label>
+            <input type="search" id="tagSearch" class="tag-browser__search" data-tag-search placeholder="Search tags" autocomplete="off" spellcheck="false" />
+            <span class="tag-browser__count" data-tag-count>@Model.Tags.Count tag@(Model.Tags.Count == 1 ? string.Empty : "s")</span>
+        </div>
+
         @if (!Model.Tags.Any())
         {
             <div class="empty-state">
@@ -70,24 +75,44 @@
         }
         else
         {
-            @foreach (var tag in Model.Tags)
-            {
-                <article class="tag-card" data-tag="@tag.Tag">
-                    <h2 class="tag-card__title">@tag.Tag</h2>
-                    <p class="tag-card__count">@tag.PhotoCount media item@(tag.PhotoCount == 1 ? string.Empty : "s")</p>
-                    <div class="toolbar__group">
-                        <button class="btn btn-outline" type="button" data-action="preview-tag" data-tag="@tag.Tag">Preview</button>
-                        <a class="btn btn-outline" asp-controller="Tags" asp-action="Detail" asp-route-tag="@tag.Tag">Open detail</a>
-                    </div>
-                </article>
-            }
+            <div class="tag-browser__grid" data-tag-grid>
+                @foreach (var tag in Model.Tags)
+                {
+                    <article class="tag-card" data-tag="@tag.Tag">
+                        <button class="tag-card__preview" type="button" data-action="preview-tag" data-tag="@tag.Tag" title="Preview @tag.Tag">@tag.Tag</button>
+                        <p class="tag-card__count">@tag.PhotoCount media item@(tag.PhotoCount == 1 ? string.Empty : "s")</p>
+                        <div class="tag-card__actions">
+                            <button class="tag-card__action tag-card__action--include" type="button" data-action="include-tag" data-tag="@tag.Tag" title="Include @tag.Tag" aria-label="Include tag @tag.Tag">+</button>
+                            <button class="tag-card__action tag-card__action--exclude" type="button" data-action="exclude-tag" data-tag="@tag.Tag" title="Exclude @tag.Tag" aria-label="Exclude tag @tag.Tag">−</button>
+                            <a class="tag-card__detail" asp-controller="Tags" asp-action="Detail" asp-route-tag="@tag.Tag" title="Open detail for @tag.Tag">Detail</a>
+                        </div>
+                    </article>
+                }
+            </div>
         }
     </div>
 
     <aside class="tag-browser__preview" aria-live="polite">
+        <section class="tag-query" aria-label="Tag query builder" data-tag-query>
+            <h2 class="tag-query__title">Build a tag query</h2>
+            <p class="tag-query__hint">Include tags that must appear together and exclude tags you want to avoid. Queries update automatically.</p>
+            <div class="tag-query__group">
+                <h3>Include</h3>
+                <div class="tag-query__chips" data-include-list></div>
+            </div>
+            <div class="tag-query__group">
+                <h3>Exclude</h3>
+                <div class="tag-query__chips" data-exclude-list></div>
+            </div>
+            <div class="tag-query__actions">
+                <button class="btn btn-primary" type="button" data-action="run-query">Run query</button>
+                <button class="btn btn-ghost" type="button" data-action="reset-query">Clear</button>
+            </div>
+        </section>
+
         <h2 class="tag-browser__preview-title" data-preview-title>Preview</h2>
         <div class="media-gallery-grid" data-preview-gallery></div>
-        <div class="scroll-status" data-scroll-status aria-live="polite">Select a tag to load preview media.</div>
+        <div class="scroll-status" data-scroll-status aria-live="polite">Add tags to the query or preview a tag to see media here.</div>
     </aside>
 </section>
 

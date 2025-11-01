@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using MediaGallery.Web.ViewModels;
 
 namespace MediaGallery.Web.Services;
@@ -12,6 +13,13 @@ public interface ITagService
 
     Task<TagDetailViewModel> GetTagDetailAsync(
         string tag,
+        int pageNumber,
+        int pageSize,
+        CancellationToken cancellationToken = default);
+
+    Task<TagQueryResultViewModel> QueryTagsAsync(
+        IEnumerable<string> includeTags,
+        IEnumerable<string> excludeTags,
         int pageNumber,
         int pageSize,
         CancellationToken cancellationToken = default);

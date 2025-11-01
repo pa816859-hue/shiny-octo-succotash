@@ -132,4 +132,28 @@ public class TagsController : Controller
             return NotFound();
         }
     }
+
+    [HttpGet]
+    public async Task<IActionResult> QueryData(
+        [FromQuery(Name = "include")] string[]? includeTags,
+        [FromQuery(Name = "exclude")] string[]? excludeTags,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = PaginationHelper.DefaultPageSize,
+        CancellationToken cancellationToken = default)
+    {
+        if (!PaginationHelper.TryValidate(page, pageSize, out var errorMessage))
+        {
+            return BadRequest(new { error = errorMessage });
+        }
+
+        var normalizedPageSize = PaginationHelper.ClampPageSize(pageSize);
+        var includes = includeTags ?? Array.Empty<string>();
+        var excludes = excludeTags ?? Array.Empty<string>();
+
+        var result = await _tagService
+            .QueryTagsAsync(includes, excludes, page, normalizedPageSize, cancellationToken)
+            .ConfigureAwait(false);
+
+        return Ok(result);
+    }
 }
