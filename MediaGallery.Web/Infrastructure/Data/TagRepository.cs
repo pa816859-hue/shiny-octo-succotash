@@ -1,5 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Data;
+using System.Linq;
+using System.Text;
 using MediaGallery.Web.Infrastructure.Data.Dto;
 using Microsoft.Data.SqlClient;
 
@@ -230,6 +233,182 @@ OFFSET @Offset ROWS FETCH NEXT @Limit ROWS ONLY;";
                 reader.GetString(photoPathOrdinal),
                 reader.GetDateTime(addedOnOrdinal),
                 reader.GetDouble(scoreOrdinal),
+                reader.IsDBNull(messageIdOrdinal) ? null : reader.GetInt64(messageIdOrdinal),
+                reader.IsDBNull(channelIdOrdinal) ? null : reader.GetInt64(channelIdOrdinal),
+                reader.IsDBNull(sentDateOrdinal) ? null : reader.GetDateTime(sentDateOrdinal),
+                reader.IsDBNull(messageTextOrdinal) ? null : reader.GetString(messageTextOrdinal),
+                reader.IsDBNull(userIdOrdinal) ? null : reader.GetInt64(userIdOrdinal),
+                reader.IsDBNull(usernameOrdinal) ? null : reader.GetString(usernameOrdinal),
+                reader.IsDBNull(firstNameOrdinal) ? null : reader.GetString(firstNameOrdinal),
+                reader.IsDBNull(lastNameOrdinal) ? null : reader.GetString(lastNameOrdinal)));
+        }
+
+        return details;
+    }
+
+    public async Task<IReadOnlyList<TagDetailDto>> QueryTagDetailsAsync(
+        IReadOnlyCollection<string> includeTags,
+        IReadOnlyCollection<string> excludeTags,
+        int offset,
+        int limit,
+        CancellationToken cancellationToken = default)
+    {
+        if (includeTags is null)
+        {
+            throw new ArgumentNullException(nameof(includeTags));
+        }
+
+        if (excludeTags is null)
+        {
+            throw new ArgumentNullException(nameof(excludeTags));
+        }
+
+        var normalizedOffset = NormalizeOffset(offset);
+        var normalizedLimit = NormalizePageSize(limit);
+
+        using var connection = CreateConnection();
+        using var command = new SqlCommand
+        {
+            CommandType = CommandType.Text,
+            Connection = connection
+        };
+
+        var includeList = includeTags.ToList();
+        var excludeList = excludeTags.ToList();
+
+        var includeParameterNames = new List<string>(includeList.Count);
+        for (var index = 0; index < includeList.Count; index++)
+        {
+            var parameterName = $"@Include{index}";
+            includeParameterNames.Add(parameterName);
+            command.Parameters.Add(new SqlParameter(parameterName, SqlDbType.NVarChar, 255)
+            {
+                Value = includeList[index]
+            });
+        }
+
+        var excludeParameterNames = new List<string>(excludeList.Count);
+        for (var index = 0; index < excludeList.Count; index++)
+        {
+            var parameterName = $"@Exclude{index}";
+            excludeParameterNames.Add(parameterName);
+            command.Parameters.Add(new SqlParameter(parameterName, SqlDbType.NVarChar, 255)
+            {
+                Value = excludeList[index]
+            });
+        }
+
+        command.Parameters.Add(new SqlParameter("@IncludeCount", SqlDbType.Int)
+        {
+            Value = includeList.Count
+        });
+        command.Parameters.Add(new SqlParameter("@Offset", SqlDbType.Int)
+        {
+            Value = normalizedOffset
+        });
+        command.Parameters.Add(new SqlParameter("@Limit", SqlDbType.Int)
+        {
+            Value = normalizedLimit
+        });
+
+        var queryBuilder = new StringBuilder();
+        queryBuilder.AppendLine("WITH CandidatePhotos AS (");
+        queryBuilder.AppendLine("    SELECT pt.PhotoID");
+        queryBuilder.AppendLine("    FROM dbo.PhotoTags AS pt");
+        queryBuilder.AppendLine("    GROUP BY pt.PhotoID");
+
+        var conditions = new List<string>();
+        if (includeParameterNames.Count > 0)
+        {
+            conditions.Add($"COUNT(DISTINCT CASE WHEN pt.Tag IN ({string.Join(", ", includeParameterNames)}) THEN pt.Tag END) = @IncludeCount");
+        }
+
+        if (excludeParameterNames.Count > 0)
+        {
+            conditions.Add($"SUM(CASE WHEN pt.Tag IN ({string.Join(", ", excludeParameterNames)}) THEN 1 ELSE 0 END) = 0");
+        }
+
+        if (conditions.Count > 0)
+        {
+            queryBuilder.AppendLine("    HAVING " + string.Join("\n       AND ", conditions));
+        }
+
+        queryBuilder.AppendLine(")");
+        queryBuilder.AppendLine("SELECT cp.PhotoID,");
+        queryBuilder.AppendLine("       p.FilePath AS PhotoPath,");
+        queryBuilder.AppendLine("       p.AddedOn,");
+        queryBuilder.AppendLine("       best.Tag,");
+        queryBuilder.AppendLine("       best.Score,");
+        queryBuilder.AppendLine("       md.MessageID,");
+        queryBuilder.AppendLine("       md.ChannelID,");
+        queryBuilder.AppendLine("       md.SentDate,");
+        queryBuilder.AppendLine("       md.MessageText,");
+        queryBuilder.AppendLine("       md.UserID,");
+        queryBuilder.AppendLine("       md.Username,");
+        queryBuilder.AppendLine("       md.FirstName,");
+        queryBuilder.AppendLine("       md.LastName");
+        queryBuilder.AppendLine("FROM CandidatePhotos AS cp");
+        queryBuilder.AppendLine("JOIN dbo.Photos AS p ON p.PhotoID = cp.PhotoID");
+        queryBuilder.AppendLine("OUTER APPLY (");
+        queryBuilder.AppendLine("    SELECT TOP (1) pt.Tag, pt.Score");
+        queryBuilder.AppendLine("    FROM dbo.PhotoTags AS pt");
+        queryBuilder.AppendLine("    WHERE pt.PhotoID = cp.PhotoID");
+        if (includeParameterNames.Count > 0)
+        {
+            queryBuilder.AppendLine($"    ORDER BY CASE WHEN pt.Tag IN ({string.Join(", ", includeParameterNames)}) THEN 0 ELSE 1 END, pt.Score DESC, pt.Tag ASC");
+        }
+        else
+        {
+            queryBuilder.AppendLine("    ORDER BY pt.Score DESC, pt.Tag ASC");
+        }
+
+        queryBuilder.AppendLine(") AS best");
+        queryBuilder.AppendLine("OUTER APPLY (");
+        queryBuilder.AppendLine("    SELECT TOP (1)");
+        queryBuilder.AppendLine("           m.MessageID,");
+        queryBuilder.AppendLine("           m.ChannelID,");
+        queryBuilder.AppendLine("           m.SentDate,");
+        queryBuilder.AppendLine("           m.MessageText,");
+        queryBuilder.AppendLine("           m.UserID,");
+        queryBuilder.AppendLine("           n.Username,");
+        queryBuilder.AppendLine("           n.FirstName,");
+        queryBuilder.AppendLine("           n.LastName");
+        queryBuilder.AppendLine("    FROM dbo.Messages AS m");
+        queryBuilder.AppendLine("    LEFT JOIN dbo.UserNames AS n ON n.UserID = m.UserID");
+        queryBuilder.AppendLine("    WHERE m.PhotoID = cp.PhotoID");
+        queryBuilder.AppendLine("    ORDER BY m.SentDate DESC, m.MessageID DESC");
+        queryBuilder.AppendLine(") AS md");
+        queryBuilder.AppendLine("ORDER BY p.AddedOn DESC, cp.PhotoID DESC");
+        queryBuilder.AppendLine("OFFSET @Offset ROWS FETCH NEXT @Limit ROWS ONLY;");
+
+        command.CommandText = queryBuilder.ToString();
+
+        var details = new List<TagDetailDto>(normalizedLimit);
+
+        await using var reader = await ExecuteReaderAsync(command, cancellationToken).ConfigureAwait(false);
+        var photoIdOrdinal = reader.GetOrdinal("PhotoID");
+        var photoPathOrdinal = reader.GetOrdinal("PhotoPath");
+        var addedOnOrdinal = reader.GetOrdinal("AddedOn");
+        var tagOrdinal = reader.GetOrdinal("Tag");
+        var scoreOrdinal = reader.GetOrdinal("Score");
+        var messageIdOrdinal = reader.GetOrdinal("MessageID");
+        var channelIdOrdinal = reader.GetOrdinal("ChannelID");
+        var sentDateOrdinal = reader.GetOrdinal("SentDate");
+        var messageTextOrdinal = reader.GetOrdinal("MessageText");
+        var userIdOrdinal = reader.GetOrdinal("UserID");
+        var usernameOrdinal = reader.GetOrdinal("Username");
+        var firstNameOrdinal = reader.GetOrdinal("FirstName");
+        var lastNameOrdinal = reader.GetOrdinal("LastName");
+
+        while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+        {
+            var tag = reader.IsDBNull(tagOrdinal) ? string.Empty : reader.GetString(tagOrdinal);
+            details.Add(new TagDetailDto(
+                tag,
+                reader.GetInt64(photoIdOrdinal),
+                reader.GetString(photoPathOrdinal),
+                reader.GetDateTime(addedOnOrdinal),
+                reader.IsDBNull(scoreOrdinal) ? 0 : reader.GetDouble(scoreOrdinal),
                 reader.IsDBNull(messageIdOrdinal) ? null : reader.GetInt64(messageIdOrdinal),
                 reader.IsDBNull(channelIdOrdinal) ? null : reader.GetInt64(channelIdOrdinal),
                 reader.IsDBNull(sentDateOrdinal) ? null : reader.GetDateTime(sentDateOrdinal),
