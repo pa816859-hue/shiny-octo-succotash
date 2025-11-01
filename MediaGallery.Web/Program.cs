@@ -26,7 +26,9 @@ builder.Services.AddScoped<IMediaFileProvider, MediaFileProvider>();
 builder.Services.AddScoped<IMessageService, MessageService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ITagService, TagService>();
+builder.Services.AddSingleton<IPhotoStateStore, PhotoStateStore>();
 builder.Services.AddSingleton<IVideoStateStore, VideoStateStore>();
+builder.Services.AddScoped<IPhotoService, PhotoService>();
 builder.Services.AddScoped<IVideoService, VideoService>();
 
 var app = builder.Build();

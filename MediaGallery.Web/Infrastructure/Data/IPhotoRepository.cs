@@ -8,4 +8,12 @@ public interface IPhotoRepository
         int offset,
         int pageSize,
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<PhotoDto>> GetRandomPhotosAsync(
+        int pageSize,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<PhotoDto>> GetPhotosByIdsAsync(
+        IEnumerable<long> photoIds,
+        CancellationToken cancellationToken = default);
 }
