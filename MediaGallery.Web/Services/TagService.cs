@@ -11,11 +11,13 @@ public class TagService : ITagService
 {
     private readonly ITagRepository _tagRepository;
     private readonly IUserRepository _userRepository;
+    private readonly IMediaFileProvider _mediaFileProvider;
 
-    public TagService(ITagRepository tagRepository, IUserRepository userRepository)
+    public TagService(ITagRepository tagRepository, IUserRepository userRepository, IMediaFileProvider mediaFileProvider)
     {
-        _tagRepository = tagRepository;
-        _userRepository = userRepository;
+        _tagRepository = tagRepository ?? throw new ArgumentNullException(nameof(tagRepository));
+        _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
+        _mediaFileProvider = mediaFileProvider ?? throw new ArgumentNullException(nameof(mediaFileProvider));
     }
 
     public async Task<TagIndexViewModel> GetTagIndexAsync(
@@ -84,8 +86,14 @@ public class TagService : ITagService
 
         var hasNextPage = details.Count > pageSize;
         var trimmedDetails = hasNextPage ? details.Take(pageSize).ToList() : details.ToList();
+        var normalizedDetails = trimmedDetails
+            .Select(detail => detail with
+            {
+                PhotoPath = MediaPathFormatter.ToRelativeWebPath(detail.PhotoPath, _mediaFileProvider.RootDirectory)
+            })
+            .ToList();
 
         var pagination = new PaginationMetadata(pageNumber, pageSize, hasNextPage, pageNumber > 1);
-        return trimmedDetails.ToTagDetailViewModel(tag, pagination);
+        return normalizedDetails.ToTagDetailViewModel(tag, pagination);
     }
 }

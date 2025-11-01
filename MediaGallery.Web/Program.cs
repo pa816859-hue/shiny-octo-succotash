@@ -1,6 +1,12 @@
+using System;
+using System.IO;
 using MediaGallery.Web.Configurations;
 using MediaGallery.Web.Infrastructure.Data;
 using MediaGallery.Web.Services;
+using Microsoft.AspNetCore.StaticFiles;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,6 +38,42 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
+
+var mediaOptions = app.Services.GetRequiredService<IOptions<MediaOptions>>();
+var mediaRoot = mediaOptions.Value.RootDirectory;
+
+if (string.IsNullOrWhiteSpace(mediaRoot))
+{
+    app.Logger.LogWarning("Media root directory is not configured. Media files will not be served.");
+}
+else
+{
+    try
+    {
+        var absoluteMediaRoot = Path.GetFullPath(mediaRoot);
+        if (Directory.Exists(absoluteMediaRoot))
+        {
+            var contentTypeProvider = new FileExtensionContentTypeProvider();
+            app.UseStaticFiles(new StaticFileOptions
+            {
+                FileProvider = new PhysicalFileProvider(absoluteMediaRoot),
+                RequestPath = "/media",
+                ServeUnknownFileTypes = true,
+                ContentTypeProvider = contentTypeProvider
+            });
+        }
+        else
+        {
+            app.Logger.LogWarning(
+                "Configured media root '{MediaRoot}' does not exist. Media files will not be served.",
+                absoluteMediaRoot);
+        }
+    }
+    catch (Exception exception)
+    {
+        app.Logger.LogError(exception, "Failed to configure media file provider for root '{MediaRoot}'.", mediaRoot);
+    }
+}
 
 app.UseRouting();
 

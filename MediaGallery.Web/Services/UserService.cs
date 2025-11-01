@@ -15,15 +15,18 @@ public class UserService : IUserService
     private readonly IUserRepository _userRepository;
     private readonly ITagRepository _tagRepository;
     private readonly IMessageRepository _messageRepository;
+    private readonly IMediaFileProvider _mediaFileProvider;
 
     public UserService(
         IUserRepository userRepository,
         ITagRepository tagRepository,
-        IMessageRepository messageRepository)
+        IMessageRepository messageRepository,
+        IMediaFileProvider mediaFileProvider)
     {
-        _userRepository = userRepository;
-        _tagRepository = tagRepository;
-        _messageRepository = messageRepository;
+        _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
+        _tagRepository = tagRepository ?? throw new ArgumentNullException(nameof(tagRepository));
+        _messageRepository = messageRepository ?? throw new ArgumentNullException(nameof(messageRepository));
+        _mediaFileProvider = mediaFileProvider ?? throw new ArgumentNullException(nameof(mediaFileProvider));
     }
 
     public async Task<UserProfileViewModel> GetUserProfileAsync(
@@ -65,8 +68,15 @@ public class UserService : IUserService
 
         var hasNextPage = messages.Count > pageSize;
         var trimmedMessages = hasNextPage ? messages.Take(pageSize).ToList() : messages.ToList();
+        var normalizedMessages = trimmedMessages
+            .Select(message => message with
+            {
+                PhotoPath = MediaPathFormatter.ToRelativeWebPath(message.PhotoPath, _mediaFileProvider.RootDirectory),
+                VideoPath = MediaPathFormatter.ToRelativeWebPath(message.VideoPath, _mediaFileProvider.RootDirectory)
+            })
+            .ToList();
         var pagination = new PaginationMetadata(pageNumber, pageSize, hasNextPage, pageNumber > 1);
 
-        return user.ToUserProfileViewModel(tags, trimmedMessages, pagination);
+        return user.ToUserProfileViewModel(tags, normalizedMessages, pagination);
     }
 }

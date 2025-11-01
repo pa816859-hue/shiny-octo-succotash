@@ -10,10 +10,12 @@ namespace MediaGallery.Web.Services;
 public class MessageService : IMessageService
 {
     private readonly IMessageRepository _messageRepository;
+    private readonly IMediaFileProvider _mediaFileProvider;
 
-    public MessageService(IMessageRepository messageRepository)
+    public MessageService(IMessageRepository messageRepository, IMediaFileProvider mediaFileProvider)
     {
-        _messageRepository = messageRepository;
+        _messageRepository = messageRepository ?? throw new ArgumentNullException(nameof(messageRepository));
+        _mediaFileProvider = mediaFileProvider ?? throw new ArgumentNullException(nameof(mediaFileProvider));
     }
 
     public async Task<RecentMessagesViewModel> GetRecentMessagesAsync(
@@ -45,8 +47,15 @@ public class MessageService : IMessageService
 
         var hasNextPage = items.Count > pageSize;
         var trimmedItems = hasNextPage ? items.Take(pageSize).ToList() : items.ToList();
+        var normalizedItems = trimmedItems
+            .Select(message => message with
+            {
+                PhotoPath = MediaPathFormatter.ToRelativeWebPath(message.PhotoPath, _mediaFileProvider.RootDirectory),
+                VideoPath = MediaPathFormatter.ToRelativeWebPath(message.VideoPath, _mediaFileProvider.RootDirectory)
+            })
+            .ToList();
         var pagination = new PaginationMetadata(pageNumber, pageSize, hasNextPage, pageNumber > 1);
 
-        return trimmedItems.ToRecentMessagesViewModel(pagination);
+        return normalizedItems.ToRecentMessagesViewModel(pagination);
     }
 }
